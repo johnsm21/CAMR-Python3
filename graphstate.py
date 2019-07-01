@@ -176,7 +176,6 @@ class GraphState(object):
         if self.idx == START_ID:
             return [{'type':NEXT2}]
 
-        print('\n--------------------------------------\n')
         actions = []
         currentIdx = self.idx
         currentChildIdx = self.cidx
@@ -187,11 +186,6 @@ class GraphState(object):
         token_to_concept_table = GraphState.model.token_to_concept_table
         tag_codebook = GraphState.model.tag_codebook
 
-        print('currentIdx = ' + str(currentIdx))
-        print('currentChildIdx = ' + str(currentChildIdx))
-        print('currentNode = ' + str(currentNode))
-        print('currentChild = ' + str(currentChild))
-
         if isinstance(currentIdx,int):
             current_tok_lemma = ','.join(tok['lemma'] for tok in GraphState.sent if tok['id'] in range(currentNode.start,currentNode.end))
             current_tok_form = ','.join(tok['form'] for tok in GraphState.sent if tok['id'] in range(currentNode.start,currentNode.end))
@@ -201,9 +195,6 @@ class GraphState(object):
             current_tok_lemma = ABT_TOKEN['lemma'] #if currentIdx != START_ID else START_TOKEN['lemma']
             current_tok_ne = ABT_TOKEN['ne'] #if currentIdx != START_ID else START_TOKEN['ne']
 
-        print('current_tok_lemma = ' + str(current_tok_lemma))
-        print('current_tok_form = ' + str(current_tok_form))
-        print('current_tok_ne = ' + str(current_tok_ne))
         #if self.action_history and self.action_history[-1]['type'] in [REPLACEHEAD,NEXT2,DELETENODE] and currentNode.num_parent_infer_in_chain < 3 and currentNode.num_parent_infer == 0:
             #actions.extend([{'type':INFER,'tag':z} for z in tag_codebook['ABTTag'].labels()])
 
@@ -252,7 +243,6 @@ class GraphState(object):
                 #actions.extend({'type':ADDCHILD,'child_type':x} for x in currentGraph.get_possible_children_unconstrained(currentIdx))
         else:
 
-            print('Matt is Here')
             all_candidate_tags = []
             # MOD
             if current_tok_lemma in token_to_concept_table:
@@ -278,8 +268,6 @@ class GraphState(object):
                 actions.append({'type':DELETENODE})
             actions.append({'type':NEXT2})
             actions.extend({'type':NEXT2,'tag':z} for z in all_candidate_tags)
-
-            print('last self.A.nodes = ' + str(self.A.nodes))
         return actions
 
     def get_node_context(self,idx):
@@ -775,8 +763,6 @@ class GraphState(object):
 
     def get_score(self,act_type,feature,train=True):
         act_idx = GraphState.model.class_codebook.get_index(act_type)
-        print('act_type = ' + str(act_type))
-        print('act_idx = ' + str(act_idx))
         #if GraphState.model.weight[act_idx].shape[0] <= GraphState.model.feature_codebook[act_idx].size():
         #    GraphState.model.reshape_weight(act_idx)
         weight = GraphState.model.weight[act_idx] if train else GraphState.model.avg_weight[act_idx]
@@ -785,14 +771,12 @@ class GraphState(object):
         # print('feature = ' + str(list_feature))
         feature = map(lambda x: x, list_feature)
 
-        print('weight = ' + str(weight))
         feat_idx = map(GraphState.model.feature_codebook[act_idx].get_index,feature)
 
         # print('get_label(6296)' + str(GraphState.model.feature_codebook[act_idx].get_label(6296)))
         # print('get_label(6299)' + str(GraphState.model.feature_codebook[act_idx].get_label(6299)))
 
         list_feat_idx = list(feat_idx)
-        print('feat_idx = ' + str(list_feat_idx))
         feat_idx = map(lambda x: x, list_feat_idx)
 
         # if (act_type == 6) and (act_idx == 6):
@@ -808,8 +792,6 @@ class GraphState(object):
         return self.A.nodes[self.idx]
 
     def get_current_child(self):
-        print('self.cidx = ' + str(self.cidx))
-        print('self.A.nodes = ' + str(self.A.nodes))
         if self.cidx and self.cidx in self.A.nodes:
             return self.A.nodes[self.cidx]
         else:
@@ -1217,9 +1199,6 @@ class GraphState(object):
             pvar = node_prefix+str(parent)
             cvar = node_prefix+str(child)
 
-            print('pvar = ' + str(pvar))
-            print('cvar = ' + str(cvar))
-
             try:
                 if parent == 0:
                     if cvar not in amr:
@@ -1238,9 +1217,7 @@ class GraphState(object):
                         amr._add_triple(cpvar_cache[pvar],rel_label,cvar)
                     else:
                         amr._add_triple(pvar,rel_label,cvar)
-                        print('pvar = ' + str(pvar))
-                        print('rel_label = ' + str(rel_label))
-                        print('cvar = ' + str(cvar))
+
             except ValueError as e:
                 print (e)
                 #print span_graph.graphID
@@ -1250,9 +1227,6 @@ class GraphState(object):
             amr.node_to_concepts[FAKE_ROOT_VAR] = FAKE_ROOT_CONCEPT
             for multi_root in amr.roots:
                 amr._add_triple(FAKE_ROOT_VAR,FAKE_ROOT_EDGE,multi_root)
-                print('\tFAKE_ROOT_VAR = ' + str(FAKE_ROOT_VAR))
-                print('\tFAKE_ROOT_EDGE = ' + str(FAKE_ROOT_EDGE))
-                print('\tmulti_root = ' + str(multi_root))
             amr.roots = [FAKE_ROOT_VAR]
         elif len(amr.roots) == 0 and len(amr.keys()) != 0:
             foo =  amr[FAKE_ROOT_VAR]
@@ -1275,9 +1249,6 @@ class GraphState(object):
                 foo = amr[mrvar]
                 amr.node_to_concepts[mrvar] = span_graph.nodes[mlt_root].tag
                 amr._add_triple(FAKE_ROOT_VAR,FAKE_ROOT_EDGE,mrvar)
-                print('FAKE_ROOT_VAR = ' + str(FAKE_ROOT_VAR))
-                print('FAKE_ROOT_EDGE = ' + str(FAKE_ROOT_EDGE))
-                print('mrvar = ' + str(mrvar))
             amr.roots=[FAKE_ROOT_VAR]
 
         else:

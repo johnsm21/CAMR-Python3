@@ -262,7 +262,6 @@ def _add_dependency(instances,result,FORMAT="stanford"):
         # result is the entire file
         # print('result = [\n********************************' + str(result) + ']\n********************************')
         for line in result.split('\n'):
-            print('line = ' + str(line))
             if line.strip():
                 split_entry = re.split("\(|, ", line[:-1])
 
@@ -281,13 +280,8 @@ def _add_dependency(instances,result,FORMAT="stanford"):
                     if r_index != 'null':
                         # print >> sys.stderr, line
                         try:
-
-                            print('len(instances) = ' + str(len(instances)))
-                            print('i = ' + str(i))
-                            print('instances[i] = ' + str(instances[i]))
                             instances[i].addDependency( rel, l_index, r_index )
                         except IndexError:
-                            print('Yep error thrown')
                             import pdb
                             pdb.set_trace()
                     if r_trace is not None:
@@ -535,7 +529,6 @@ def preprocess(input_file,START_SNLP=True,INPUT_AMR='amr',PRP_FORMAT='plain'):
             #raise IOError('Converted dependency file %s not founded' % (dep_filename))
         print ('Read dependency file %s...' % (dep_filename))
         dep_result = codecs.open(dep_filename,'r',encoding='utf-8').read()
-        print("instances: " + str(instances))
         _add_dependency(instances,dep_result,constants.FLAG_DEPPARSER)
 
     elif constants.FLAG_DEPPARSER == "clear":

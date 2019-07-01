@@ -67,20 +67,13 @@ class Parser(object):
         map_max = map(np.amax,scores)
 
         list_map_max = list(map_max)
-        print('map_max = ' + str(list_map_max))
         map_max = map(lambda x: x, list_map_max)
 
         list_map_max = list(map_max)
-        print('map_max = ' + str(list_map_max))
         map_max = map(lambda x: x, list_map_max)
 
         best_act_ind = np.argmax(list(map_max))
         best_act = actions[best_act_ind]
-
-        print('+++++++++++++++++++++++')
-        print('best_act_ind = ' + str(best_act_ind))
-        print('best_act = ' + str(best_act))
-        print('+++++++++++++++++++++++')
 
         if best_act['type'] in ACTION_WITH_EDGE or best_act['type'] in ACTION_WITH_TAG:
 
@@ -284,15 +277,10 @@ class Parser(object):
 
             #return results
         else:
-            print('Look Here Matt')
-            print('Before Results = ' + str(parsed_amr))
             for i,inst in enumerate(instances,1):
                 per_start_time = time.time()
                 step,state = self.parse(inst,train=False)
-                print('step = ' + str(step))
-                print('state = ' + str(state))
-                print('sentence = ' + str(state.sent))
-                # raise Exception('Matt WTF')
+
                 per_parse_time = round(time.time()-per_start_time,3)
 
                 parsed_amr.append(GraphState.get_parsed_amr(state.A))
@@ -300,8 +288,6 @@ class Parser(object):
             print("Parsing on %s instances takes %s" % (str(i),datetime.timedelta(seconds=round(time.time()-start_time,0))), file=self.elog)
             # print >> self.elog,"Parsing on %s instances takes %s" % (str(i),datetime.timedelta(seconds=round(time.time()-start_time,0)))
 
-        print('Results = ' + str(parsed_amr))
-        # raise Exception('Matt WTF')
         return span_graph_pairs, parsed_amr
 
     def _parse(self,instance):
@@ -309,7 +295,6 @@ class Parser(object):
         return (True,Parser.State.init_state(instance,self.verbose))
 
     def parse(self,instance,train=True):
-        print('Yes')
         # no beam; pseudo deterministic oracle
         state = Parser.State.init_state(instance,self.verbose)
         ref_graph = instance.gold_graph
@@ -325,14 +310,12 @@ class Parser(object):
             #start_time = time.time()
             violated = False
             actions = state.get_possible_actions(train)
-            print('early actions = '+ str(actions))
             #argset = map(Parser.State.model.rel_codebook.get_index,list(state.get_current_argset()))
             #print "Done getactions, %s"%(round(time.time()-start_time,2))
 
             if len(actions) == 1:
                 best_act = actions[0]
                 best_label = None
-                print('best_label = '+ str(best_label))
             else:
                 if train:
                     features = map(state.make_feat,actions)
@@ -386,21 +369,17 @@ class Parser(object):
                     #print "Done update, %s"%(round(time.time()-start_time,2))
                     #raw_input('ENTER TO CONTINUE')
                 else:
-                    print('actions = ' + str(actions))
                     features = map(state.make_feat,actions)
                     # print('features = ' + str(list(map(state.make_feat,actions))))
 
                     scores = map(state.get_score,(act['type'] for act in actions),features,[train]*len(actions))
 
                     listScores = list(scores)
-                    print('listScores = ' + str(listScores))
                     scores = map(lambda x: x, listScores)
 
                     best_act_ind, best_label_index = self.get_best_act(scores,actions)#,argset)
-                    print('best_act_ind = ' + str(best_act_ind))
                     best_act = actions[best_act_ind]
                     best_label = Parser.get_index_label(best_act,best_label_index)
-                    print('best_label = ' + str(best_label)) # Matt
 
                     if self.verbose == 1:
                         gold_act, gold_label = Parser.oracle.give_ref_action(state,ref_graph)
@@ -448,10 +427,7 @@ class Parser(object):
             elif act_to_apply['type'] in ACTION_WITH_TAG:
                 act_to_apply['tag'] = best_label
             pre_state = state
-            print('act_to_apply = ' + str(act_to_apply))
-            print('pre apply state.A.nodes = ' + str(state.A.nodes))
             state = state.apply(act_to_apply)
-            print('state.A.nodes = ' + str(state.A.nodes))
             step += 1
 
         if self.verbose == 1:

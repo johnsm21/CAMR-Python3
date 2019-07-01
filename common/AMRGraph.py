@@ -33,10 +33,6 @@ class Node():
         self.parent = parent
         self.trace = trace
         self.node_label = node_label
-        print('init node_label = ' + str(node_label))
-        if len(self.node_label) > 4:
-            print('')
-            # raise Exception('Matt WTF')
         self.firsthit = firsthit
         self.leaf = leaf
         self.depth = depth

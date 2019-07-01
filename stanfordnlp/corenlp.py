@@ -157,12 +157,8 @@ def parse_parser_results_new(text):
 
     # seqs = re.split("\r\n", text)
     i = 0
-
-    print("Parser Result = {" + str(text) + "}")
-    print("seqs = {" + str(seqs) + "}")
     #for line in re.split("\r\n", text):
     while i < len(seqs):
-        print("data = " + str(data))
         line = seqs[i]
         line = line.strip()
 
@@ -222,7 +218,6 @@ def parse_parser_results_new(text):
                 data.addToken(t[0], t[1][u'CharacterOffsetBegin'], t[1][u'CharacterOffsetEnd'],
                               t[1][u'Lemma'],t[1][u'PartOfSpeech'],t[1][u'NamedEntityTag'])
                 i += 1
-                print('data.tokens = ' + str(data.tokens))
                 wline = seqs[i]
 
             if WORD_ERROR_PATTERN.match(wline): # handle format error
@@ -233,7 +228,6 @@ def parse_parser_results_new(text):
                               t[1][u'Lemma'],t[1][u'PartOfSpeech'],t[1][u'NamedEntityTag'])
                 i+=2
                 state = STATE_WORDS
-                print('data.tokens = ' + str(data.tokens))
                 continue
             state = STATE_TREE
             parsed = []
@@ -282,7 +276,6 @@ def parse_parser_results_new(text):
             i += 1
         else:
             i += 1
-    print('data_list = ' + str(data_list))
     if seqs[1] == 'A capability is a realizable entity whose basis lies in one or more parts or qualities and reflects possibility of an entity to behave in a specified way under certain conditions or in response to a certain stimulus (trigger).':
         print('pass')
         # raise Exception('WTF')
@@ -398,7 +391,6 @@ class StanfordCoreNLP(object):
             except pexpect.TIMEOUT:
             # except stanfordnlp.pexpect.TIMEOUT:
                 break
-        print('sendline(text) = ' + text)
         self.corenlp.sendline(text)
 
         # How much time should we give the parser to parse it?
@@ -481,15 +473,10 @@ class StanfordCoreNLP(object):
 
         instances = []
         prp_filename = sent_filename+'.prp' # preprocessed file
-        print('prp_filename  = ' + str(prp_filename))
         if os.path.exists(prp_filename):
-            print('prp_filename found!')
             prp_result = open(prp_filename,'r', encoding='utf_8').read()
-            print('prp_result = ' + str(prp_result))
             #i = 0
             for i, result in enumerate(prp_result.split('-'*40)[1:]):
-                print('i = ' + str(i))
-                print('result = ' + str(result))
                 #result_list = [line for line in result.split('\r\n') if line != '']
                 #if i == 862:
                 #    import pdb
@@ -507,9 +494,7 @@ class StanfordCoreNLP(object):
                     sys.stdout.flush()
 
                 try:
-                    print('here')
                     data = parse_parser_results_new(result)
-                    print('data = ' + str(data))
                 except Exception as e:
                     if VERBOSE: print(traceback.format_exc())
                     raise e
@@ -524,10 +509,8 @@ class StanfordCoreNLP(object):
 
         else:
             output_prp = open(prp_filename,'w')
-            print('sent_filename = ' + str(sent_filename))
             for i,line in enumerate(open(sent_filename,'r').readlines()):
                 result = self._parse(line)
-                print('result = ' + result)
                 output_prp.write("%s\n%s"%('-'*40,result))
                 try:
                     data = parse_parser_results_new(result)
@@ -590,10 +573,8 @@ if __name__ == '__main__':
 ##        pattern = "^\s+TCP.*" + options.port + ".*(?P<pid>[0-9]*)\s+$"
         pattern = "^\s+TCP.*"+ options.port + ".*\s(?P<pid>\d+)\s*$"
         prog = re.compile(pattern)
-        print (pattern)
         for line in data.split('\n'):
             match = re.match(prog, line)
             if match:
                 pid = match.group('pid')
-                print (pid)
                 subprocess.Popen(['taskkill', '/PID', pid, '/F'])

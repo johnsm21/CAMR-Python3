@@ -57,15 +57,8 @@ class Data():
 
     def addDependency( self, rel, l_index, r_index):
         '''CoNLL dependency format'''
-        print('rel = ' + rel)
-        print('l_index = ' + l_index)
-        print('r_index = ' + r_index)
-        print('self.tokens = ' + str(self.tokens))
 
-        print('int(l_index) == self.tokens[int(l_index)][\'id\'] = ' + str(int(l_index) == self.tokens[int(l_index)]['id']))
-        print('int(r_index) == self.tokens[int(r_index)][\'id\'] = ' + str(int(r_index) == self.tokens[int(r_index)]['id']))
         assert int(r_index) == self.tokens[int(r_index)]['id'] and int(l_index) == self.tokens[int(l_index)]['id']
-        print('after assert')
         self.tokens[int(r_index)]['head'] = int(l_index)
         self.tokens[int(r_index)]['rel'] = rel
 

@@ -407,11 +407,8 @@ def main():
         print("DONE TRAINING!", file=experiment_log)
 
     elif args.mode == 'fullparse': # actual parsing
-            print('THis far')
             test_instances = preprocess(amr_file,START_SNLP=True,INPUT_AMR=args.amrfmt, PRP_FORMAT=args.prpfmt)
 
-            print('test_instances = ' + str(test_instances))
-            print('how about here')
             #random.shuffle(test_instances)
             # print >> experiment_log, "Loading model: ", args.model
             print("Loading model: " + str(args.model), file=experiment_log)
@@ -424,7 +421,6 @@ def main():
 
 
             parsed_suffix = '%s.%s.parsed'%(args.section,args.model.split('.')[-2])
-            print('results = ' + str(results))
             write_parsed_amr(results,test_instances,amr_file,suffix=parsed_suffix)
             #write_span_graph(span_graph_pairs,test_instances,amr_file,suffix='spg.50')
             ################
@@ -445,13 +441,11 @@ def main():
                 print(subprocess.check_output(command, stderr=subprocess.STDOUT, shell=True))
 
     elif args.mode == 'parse': # actual parsing
-        print('THis far')
         test_instances = preprocess(amr_file,START_SNLP=False,INPUT_AMR=args.amrfmt,PRP_FORMAT=args.prpfmt)
         if args.section != 'all':
             print("Choosing corpus section: %s"%(args.section))
             tcr = constants.get_corpus_range(args.section,'test')
             test_instances = test_instances[tcr[0]:tcr[1]]
-        print('how about here')
         #random.shuffle(test_instances)
         # print >> experiment_log, "Loading model: ", args.model
         print("Loading model: " + str(args.model), file=experiment_log)
@@ -464,7 +458,6 @@ def main():
 
 
         parsed_suffix = '%s.%s.parsed'%(args.section,args.model.split('.')[-2])
-        print('results = ' + str(results))
         write_parsed_amr(results,test_instances,amr_file,suffix=parsed_suffix)
         #write_span_graph(span_graph_pairs,test_instances,amr_file,suffix='spg.50')
         ################

@@ -815,9 +815,6 @@ class SpanGraph(object):
         """traverse the graph in index increasing order"""
         graph_tuples = []
         node_set = set()
-        print('@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@')
-        print('self.nodes.keys() = ' + str(self.nodes.keys()))
-        print('@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@')
         # for n in sorted(self.nodes.keys()):
         for n in python2_sort_working(self.nodes.keys()):
             if (self.nodes[n].parents == [] or n not in node_set) and self.nodes[n].children != []:  # root
