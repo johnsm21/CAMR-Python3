@@ -5,9 +5,9 @@ from constants import ROOT_FORM,ROOT_LEMMA,ROOT_POS,EMPTY
 
 class Data():
     '''represent dota instance of one sentence'''
-    
+
     current_sen = 1
-    
+
     def __init__(self):
         self.tree = None
         self.coreference = None
@@ -19,9 +19,9 @@ class Data():
         self.sentID = self.current_sen
         self.comment = None
         self.trace_dict = defaultdict(set)
-        
+
         self.tokens.append({'id':0,'form':ROOT_FORM,'lemma':ROOT_LEMMA,'pos':ROOT_POS,'ne':'O','rel':EMPTY})
-        
+
     @staticmethod
     def newSen():
         Data.current_sen += 1  # won't be pickled
@@ -30,17 +30,17 @@ class Data():
 
     def get_tokenized_sent(self):
         return [tok['form'] for tok in self.tokens][1:]
-        
+
     def addTree( self, tree ):
         self.tree = tree
-        
+
     def addText( self, sentence ):
         self.text = sentence
-        
+
     def addToken( self, token, offset_begin, offset_end, lem, pop, ne ):
         tok_inst = {}
         tok_inst['id'] = len(self.tokens)
-        tok_inst['form'] = token 
+        tok_inst['form'] = token
         #tok_inst['offset_begin'] = offset_begin
         #tok_inst['offset_end'] = offset_end
         tok_inst['lemma'] = lem
@@ -54,13 +54,22 @@ class Data():
 
     def addTrace(self, rel, gov, trace):
         self.trace_dict[int(gov)].add((rel, int(trace)))
-        
+
     def addDependency( self, rel, l_index, r_index):
         '''CoNLL dependency format'''
+        print('rel = ' + rel)
+        print('l_index = ' + l_index)
+        print('r_index = ' + r_index)
+        print('self.tokens = ' + str(self.tokens))
+
+        print('int(l_index) == self.tokens[int(l_index)][\'id\'] = ' + str(int(l_index) == self.tokens[int(l_index)]['id']))
+        print('int(r_index) == self.tokens[int(r_index)][\'id\'] = ' + str(int(r_index) == self.tokens[int(r_index)]['id']))
         assert int(r_index) == self.tokens[int(r_index)]['id'] and int(l_index) == self.tokens[int(l_index)]['id']
+        print('after assert')
         self.tokens[int(r_index)]['head'] = int(l_index)
         self.tokens[int(r_index)]['rel'] = rel
-        
+
+
     def addProp(self, prd, frmset, arg, label):
         self.tokens[prd]['frmset'] = frmset
         if 'args' in self.tokens[prd]:
@@ -76,10 +85,10 @@ class Data():
 
     def addAMR(self,amr):
         self.amr = amr
-        
+
     def addComment(self,comment):
         self.comment = comment
-        
+
     def addGoldGraph(self,gold_graph):
         self.gold_graph = gold_graph
 
@@ -108,7 +117,7 @@ class Data():
                 else:
                     out_str += "%s(%s-%s, %s-%s)\n" % (tok['rel'], self.tokens[gov_id]['form'], gov_id, tok['form'], tok['id'])
         return out_str
-        
+
     def toJSON(self):
         json = {}
         json['tree'] = self.tree

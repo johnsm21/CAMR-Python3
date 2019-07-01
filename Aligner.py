@@ -8,6 +8,7 @@ from common.util import *
 from common.util import english_number,to_order
 from collections import defaultdict
 from nltk.stem.wordnet import WordNetLemmatizer
+# from nltk.stem import WordNetLemmatizer
 from span import Span
 from constants import VERB_LIST
 #from nltk.corpus import wordnet as wn
@@ -22,7 +23,7 @@ class SearchException(Exception):
 
 class Atype:
     WORD_ALIGN = 1
-    SPAN_ALIGN = 2 
+    SPAN_ALIGN = 2
     SPAN_ALIGN2 = 3
 
 class Aligner():
@@ -117,7 +118,7 @@ class Aligner():
         self.align_type = align_type
         self.verbose = verbose
         self.concept_patterns = self._compile_regex_rule(Aligner.concept_lex_rule)
-        
+
     @staticmethod
     def readJAMRAlignment(amr,JAMR_alignment):
         alignment = defaultdict(list)
@@ -159,14 +160,14 @@ class Aligner():
                         #import pdb
                         #pdb.set_trace()
                         raise Exception('Cannot find variable position id of %s'% (variable))
-                    
+
                     if pre_level > level:
                         concept = amr.node_to_concepts[variable]
                         concept_tag = concept
                         #if pre_variable in amr.node_to_concepts:
                         #    concept_tag = concept+'@'+rel[0]
                         succ_tags = []
-                        for i,pre_var in enumerate(succ_variables): # revisit all the successors 
+                        for i,pre_var in enumerate(succ_variables): # revisit all the successors
                             rel = amr.find_rel(variable,pre_var)
                             cpt = amr.node_to_concepts[pre_var]
                             if rel: succ_tags.append(rel[0]+'@'+cpt)
@@ -181,7 +182,7 @@ class Aligner():
                             concept = amr.node_to_concepts[variable]
                             tokens.insert(0,concept)
                             #rel = amr.find_rel(variable,pre_variable)
-                            #concept_tag = 
+                            #concept_tag =
                             #tags.insert(0,concept)
                             succ_variables.append(variable)
                             all_variables.append(variable)
@@ -208,11 +209,11 @@ class Aligner():
                     if sub_match and variable not in alignment:
                         span = Span(start, end, tok, ETag('+'.join(sub_match)))
                         alignment[variable].append(span)
-                
+
     def apply_align(self,sent,amr):
         """apply the alignment for sentence and its amr"""
         return getattr(self,Aligner.align_table[self.align_type])(sent,amr)
-    
+
     def _compile_regex_rule(self,rules):
         regexstr = '|'.join('(?P<%s>%s)' % (name,rule) for name,rule in rules)
         return re.compile(regexstr,re.IGNORECASE)
@@ -222,7 +223,7 @@ class Aligner():
         alignment = defaultdict(list)
         alignment['root'] = 0
         tokens = [(i+1,x) for i,x in enumerate(sent.split())]
-        
+
         node_seq,amr_triples = amr.bfs()
         unmatched_vars = node_seq
         triples = amr_triples
@@ -233,19 +234,19 @@ class Aligner():
             cur_var = cur_node.node_label
             success , sent, tokens = self.align_single_concept(sent,tokens,cur_var,amr,alignment,unmatched_vars,triples)
 
-        return alignment 
-    
+        return alignment
+
     def word_align(self,sentence,amr):
         """
-           use set of rules greedily align concepts to words, for special concepts like name,date-entity,etc., they 
+           use set of rules greedily align concepts to words, for special concepts like name,date-entity,etc., they
            stay unaligned
            details: Flanigan,2014 ACL
         """
-        
-        sent = sentence[:] # copy the sentence 
+
+        sent = sentence[:] # copy the sentence
         alignment = defaultdict(list)
         alignment['root'] = 0
-        
+
         tokens = [(i+1,x) for i,x in enumerate(sent.split())]
         #tagged_tokens = nltk.pos_tag(tokens)
 
@@ -254,7 +255,7 @@ class Aligner():
 
         while unmatched_variables:
             cur = unmatched_variables.pop(0)
-            if cur in amr.node_to_concepts:                 
+            if cur in amr.node_to_concepts:
                 cur_concept = amr.node_to_concepts[cur]
             else: #not have concepts
                 cur_concept = cur
@@ -308,7 +309,7 @@ class Aligner():
                             missing += ' quantity'
                         if unit == '':
                             missing += ' unit'
-                        
+
                         raise Exception('Quantity Entity %s does not contain %s'%(cur_concept,missing))
                     '''
                     temp_re = re.compile(r'(%s|%s)\s+(%s)s?' % (quantity,english_number(int(quantity)),unit))
@@ -321,7 +322,7 @@ class Aligner():
                     for sid, n in zip(range(span[0],span[1]), TEMP_items):
                         alignment[n].append(sid)
                     alignment[matched_variable].append(matched_variable)
-    
+
                     self.remove_aligned_concepts(unmatched_variables,amr[matched_variable].items())
 
                 elif rule_type == 'NegPolarity':
@@ -335,10 +336,10 @@ class Aligner():
                         alignment[matched_variable].append(i)
                     else:
                         update = False
-                    
+
                 elif rule_type == 'SingleConcept':
                     tmp = cur_concept.rsplit('-',1)
-                    sense = None 
+                    sense = None
                     if len(tmp) == 2:
                         sense = tmp[1]
                     cur_concept = tmp[0].lower()
@@ -367,31 +368,31 @@ class Aligner():
                         update = False
                 else:
                     pass
-                
+
                 # update
                 if update:
                     tokens = [(i,tk) for i,tk in tokens if i not in range(span[0],span[1])]
                     sent = ' '.join(x for i,x in tokens)
                     if self.verbose > 2:
                         print >> sys.stderr, "Concept '%s' Matched to span '%s' "%(cur_concept,' '.join(w for i,w in enumerate(sentence.split()) if i+1 in range(span[0],span[1])))
-                        print sent
-                        print alignment
-                
+                        print (sent)
+                        print (alignment)
+
                         #raw_input('ENTER to continue')
 
         return alignment
-    
+
     def span_align(self,sentence,amr):
         '''
-        use rules to align amr concepts to sentence spans 
+        use rules to align amr concepts to sentence spans
         '''
         sent = sentence[:]
         alignment = defaultdict(list)
         alignment['root'] = 0
         tokens = [(i+1,x) for i,x in enumerate(sent.split())]
-        
+
         unmatched_vars = list(set([var for var in amr.bfs()[0] if not isinstance(var,StrLiteral)]))
-        
+
         while unmatched_vars:
             cur = unmatched_vars.pop(0)
             if cur in amr.node_to_concepts:
@@ -406,12 +407,12 @@ class Aligner():
                 if rule_type == "NameEntity":
                     NE_items = [v[0] for k,v in amr[cur].items()]
                     NE_pattern = re.compile(r"\s".join(NE_items),re.IGNORECASE)
-                    
+
                     start,end = self._search_sent(NE_pattern,sent,tokens)
                     assert end-start == len(NE_items)
                     span = Span(start,end,Aligner.ENTITY_TAG_TABLE[rule_type],NE_items)
                     alignment[cur].append(span)
-                
+
                 elif rule_type == "QuantityEntity":
                     quantity = ''
                     unit = ''
@@ -431,7 +432,7 @@ class Aligner():
                         assert end - start == len(QTY_items)
                         span = Span(start,end,Aligner.ENTITY_TAG_TABLE[rule_type],QTY_items)
                         alignment[cur].append(span)
-                        
+
                         self.remove_aligned_concepts(unmatched_vars,amr[cur].items())
                 elif rule_type == "NegPolarity":
                     aligned = False
@@ -444,10 +445,10 @@ class Aligner():
                         alignment[cur].append(span)
                     else:
                         update = False
-                        
+
                 elif rule_type == "SingleConcept":
                     tmp = cur_concept.rsplit('-',1)
-                    sense = None 
+                    sense = None
                     if len(tmp) == 2:
                         sense = tmp[1]
                     cur_concept = tmp[0].lower()
@@ -476,7 +477,7 @@ class Aligner():
                     else:
                         print >> sys.stderr, 'Variable/Concept %s/%s cannot be aligned'%(cur,cur_concept)
                         #alignment[matched_variable].append(matched_variable)
-                        update = False                    
+                        update = False
             else:
                 raise Exception('Can not find type of concept %s / %s'%(cur,cur_concept))
 
@@ -486,18 +487,18 @@ class Aligner():
                 sent = ' '.join(x for i,x in tokens)
                 if self.verbose > 2:
                     print >> sys.stderr, "Concept '%s' Matched to span '%s' "%(cur_concept,' '.join(w for i,w in enumerate(sentence.split()) if i+1 in range(span[0],span[1])))
-                    print sent
-                    print alignment
-                    
+                    print (sent)
+                    print (alignment)
+
                     #raw_input('ENTER to continue')
 
         return alignment
-    
+
 
 
     def align_single_concept(self,sent,tokens,cur_var,amr,alignment,unmatched_vars,triples,NEXT=False):
         '''align single concept'''
-        
+
         if cur_var in amr.node_to_concepts:
             cur_concept = amr.node_to_concepts[cur_var]
         else:
@@ -515,7 +516,7 @@ class Aligner():
                 NE_items = [v[0] for k,v in amr[cur_var].items() if isinstance(v[0],StrLiteral)]
                 nep = r'%s|%s'%(r'\s'.join(NE_items),r'\s'.join(n[:4] if len(n) > 3 else n for n in NE_items))
                 NE_pattern = re.compile(nep,re.IGNORECASE)
-                
+
                 start,end = self._search_sent(NE_pattern,sent,tokens)
                 assert end-start == len(NE_items)
                 span = Span(start,end,Aligner.ENTITY_TAG_TABLE[rule_type],NE_items)
@@ -527,7 +528,7 @@ class Aligner():
             elif rule_type in ["DateEntity", "haveOrgRole91","RateEntity"]:
                 EN_items = []
                 EN_spans = []
-                for k,v in amr[cur_var].items():                    
+                for k,v in amr[cur_var].items():
                     vconcept = amr.node_to_concepts[v[0]] if v[0] in amr.node_to_concepts else v[0]
                     EN_items.append(vconcept)
                     success, sent, tokens = self.align_single_concept(sent,tokens,v[0],amr,alignment,unmatched_vars,triples)
@@ -549,7 +550,7 @@ class Aligner():
                 unit_var = None
                 q_success = False
                 u_success = False
-                                
+
                 for k,v in amr[cur_var].items():
                     if k == 'quant':
                         quantity = v[0]
@@ -560,7 +561,7 @@ class Aligner():
                         u_success, sent, tokens = self.align_single_concept(sent,tokens,unit_var,amr,alignment,unmatched_vars,triples)
                     else:
                         pass
-                        
+
                 if q_success and u_success:
                     #QTY_pattern = r'(%s|%s)\s+(%s)s?' % (quantity,english_number(int(quantity)),unit)
                     #QTY_items = [quantity,unit]
@@ -617,30 +618,30 @@ class Aligner():
                     num = [('digit','(\\s|^)('+cur_concept+'|'+format_num(cur_concept)+')(\\s|&)'),
                            ('string','(\\s|^)('+english_number(int(cur_concept))+')(\\s|&)'),
                            ('order','(\\s|^)('+to_order(cur_concept)+')(\\s|&)'),
-                           ('round','(\\s|^)('+to_round(int(cur_concept))+')(\\s|&)') 
+                           ('round','(\\s|^)('+to_round(int(cur_concept))+')(\\s|&)')
                        ]
                 NUM_pattern = self._compile_regex_rule(num)
                 #print NUM_pattern.pattern
                 try:
                     start,end = self._search_sent(NUM_pattern,sent,tokens)
                     span = Span(start,end,Aligner.ENTITY_TAG_TABLE[rule_type],[w for i,w in tokens if i in range(start,end)])
-                    alignment[cur_var].append(span)                
+                    alignment[cur_var].append(span)
                 except Exception as e:
                     update = False
                     print >> sys.stderr,e
                     #raw_input('CONTINUE')
-            
+
             elif rule_type == 'multiple':
                 op1 = amr[cur_var]['op1'][0]
 
                 success, sent, tokens = self.align_single_concept(sent,tokens,op1,amr,alignment,unmatched_vars,triples)
                 if success:
                     span = alignment[op1][0]
-                    alignment[cur_var].append(span)                                    
-                    self.remove_aligned_concepts(cur_var,'op1',op1,unmatched_vars,triples)  
+                    alignment[cur_var].append(span)
+                    self.remove_aligned_concepts(cur_var,'op1',op1,unmatched_vars,triples)
                 else:
                     update = False
-                
+
             elif rule_type in ["person","picture","country","state","city","desert","organization"]:
                 if 'name' in amr[cur_var]:
                     k_var = amr[cur_var]['name'][0]
@@ -664,7 +665,7 @@ class Aligner():
 
                     else:
                         update = False
-               
+
 
 
             elif rule_type == "NegPolarity":
@@ -721,7 +722,7 @@ class Aligner():
                         rule_type = 'SingleConcept'
                 else:
                     rule_type = 'SingleConcept'
-                
+
             elif self.is_ago(cur_var,cur_concept,amr):
                 k_var = amr[cur_var]['op1'][0]
                 aligned = False
@@ -768,9 +769,9 @@ class Aligner():
                 sent = ' '.join(x for i,x in tokens)
                 if self.verbose > 2:
                     print >> sys.stderr, "Concept '%s' Matched to span '%s' "%(cur_concept,' '.join(w for i,w in enumerate(sentence.split()) if i+1 in range(span[0],span[1])))
-                    print sent
-                    print alignment
-                    
+                    print (sent)
+                    print (alignment)
+
                     #raw_input('ENTER to continue')
             return update, sent, tokens
 
@@ -779,11 +780,11 @@ class Aligner():
         update = True
         rule_type = 'SingleConcept'
         tmp = cur_concept.rsplit('-',1)
-        sense = None 
+        sense = None
         if not isinstance(cur_var,StrLiteral) and len(tmp) == 2 and re.match('[0-9]+',tmp[1]):
             sense = tmp[1]
             cur_concept = tmp[0].lower()
-            
+
         for idx,token in tokens:
             t = token.lower()
             cur_concept = cur_concept.lower()
@@ -800,12 +801,12 @@ class Aligner():
                 if 'polarity' in amr[cur_var]:
                     neg_var = amr[cur_var]['polarity'][0]
                     self.remove_aligned_concepts(cur_var,'polarity',neg_var,unmatched_vars,triples)
-                    alignment[neg_var].append(span)                    
+                    alignment[neg_var].append(span)
                 elif 'possible' in amr[cur_var]:
                     posb_var = amr[cur_var]['possible'][0]
                     neg_var = amr[posb_var]['polarity'][0]
                     alignment[posb_var].append(span)
-                    alignment[neg_var].append(span)                    
+                    alignment[neg_var].append(span)
                 else:
                     pass
 
@@ -827,9 +828,9 @@ class Aligner():
         else:
             print >> sys.stderr, 'Variable/Concept %s/%s cannot be aligned'%(cur_var,cur_concept)
             #alignment[matched_variable].append(matched_variable)
-            update = False                    
+            update = False
         return update,span
-                
+
     def print_align_result(self,alignment,amr):
 
         output = ''
@@ -845,7 +846,7 @@ class Aligner():
             sntchunks = ','.join(str(span.start)+':'+' '.join(w for w in span.words) for span in spans)
             output += '%s/%s -> %s;'%(var,concept,sntchunks)
         return output
-        
+
     def is_plural(self,token,concept):
         candidates = [concept+suffix for suffix in Aligner.plural_suffix]
         for c in candidates:
@@ -888,29 +889,29 @@ class Aligner():
             return True
         else:
             return False
-    
+
     def WN_lemma_match(self,token,concept,sense):
         '''wordnet lemma'''
         if sense:
             pos_tag = 'v'
         else:
             pos_tag = 'n'
-        lemma = Aligner.lmtzr.lemmatize(token,pos_tag) 
+        lemma = Aligner.lmtzr.lemmatize(token,pos_tag)
         if lemma == concept:
             return True
         else:
             return False
-        
+
     def _search_sent(self,pattern,sent,tokens):
         '''search for the first occurrence of pattern in sentence
            return its span
         '''
         #print pattern.pattern
         #print sent
-        
-        
+
+
         m = pattern.search(sent)
-        if m:                        
+        if m:
             items = m.group().split()
 
             if m.group()[0] == ' ' and m.group()[-1] == ' ':
@@ -921,13 +922,13 @@ class Aligner():
                          if (sum(map(lambda x:len(x[1])+1,tokens[:i])),sum(map(lambda x:len(x[1])+1,tokens[:i]))+len(m.group())) == m.span()]
             return spans[0]
         else:
-            print pattern.pattern
-            print sent
+            print (pattern.pattern)
+            print (sent)
             raise SearchException("WARNING:Unable to find the matched span in sentence!")
             #return (-1,-1)
-            
-            
-                
+
+
+
     def remove_aligned_concepts(self,cur_var,rel,child_var,var_list,triples):
         """remove childrens of aligned concepts"""
         #print triples

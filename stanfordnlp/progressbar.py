@@ -270,7 +270,7 @@ class ProgressBar(object):
                 r.append(w)
                 hfill_inds.append(i)
                 num_hfill += 1
-            elif isinstance(w, (str, unicode)):
+            elif isinstance(w, (bytes, str)):
                 r.append(w)
                 currwidth += len(w)
             else:

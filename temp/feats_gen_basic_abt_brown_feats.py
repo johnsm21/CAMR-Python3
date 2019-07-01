@@ -57,9 +57,13 @@ def generate_features(state,action):
     a0_cpt=a0['concept'] if a0 else EMPTY
     b0_cpt=b0['concept'] if b0 else EMPTY
     dist1=abs(s0['id']-b0['id']) if b0 and b0 is not ABT_TOKEN and s0 is not ABT_TOKEN else EMPTY
-    if dist1 > 10: dist1=10
+    # print('dist1 = ' + str(dist1))
+    if dist1 is not None:
+        if dist1 > 10: dist1=10
     dist2=abs(a0['id']-b0['id']) if b0 and a0 and b0 is not ABT_TOKEN and a0 is not ABT_TOKEN else EMPTY
-    if dist2 > 10: dist2=10
+    # print('dist2 = ' + str(dist2))
+    if dist2 is not None:
+        if dist2 > 10: dist2=10
     if [s0_ne,tx] != 2*[None]:feats.append('s0_ne&tx=%s_%s_' % (s0_ne,tx))
     if [s0_w,tx] != 2*[None]:feats.append('s0_w&tx=%s_%s_' % (s0_w,tx))
     if [s0_lemma,tx] != 2*[None]:feats.append('s0_lemma&tx=%s_%s_' % (s0_lemma,tx))

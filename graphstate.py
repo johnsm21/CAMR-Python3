@@ -5,31 +5,31 @@
 #
 from __future__ import absolute_import
 import copy,sys,re
-import cPickle
+import pickle
 from parser import *
 from common.util import *
 from constants import *
-from common.SpanGraph import SpanGraph
+from common.SpanGraph import SpanGraph, python2_sort
 from common.AMRGraph import *
 import numpy as np
 
 
 
 class ActionError(Exception):
-    pass    
-    
+    pass
+
 class ActionTable(dict):
     '''to do'''
     def add_action(self,action_name):
         key =  len(self.keys())+1
         self[key] = action_name
-    
+
 class GraphState(object):
     """
     Starting from dependency graph, each state represents subgraph in parsing process
     Indexed by current node being handled
     """
-    
+
     sent = None
     #abt_tokens = None
     deptree = None
@@ -39,8 +39,8 @@ class GraphState(object):
     gold_graph = None
     model = None
     verbose = None
-    
-    
+
+
     def __init__(self,sigma,A):
         self.sigma = sigma
         self.idx = self.sigma.top()
@@ -70,7 +70,7 @@ class GraphState(object):
         for r in sorted(depGraph.multi_roots,reverse=True): seq += depGraph.postorder(root=r)
         #seq = uniqify(seq)
         seq.append(-1)
-        sigma = Buffer(seq)        
+        sigma = Buffer(seq)
         sigma.push(START_ID)
 
         GraphState.text = instance.text
@@ -81,7 +81,7 @@ class GraphState(object):
         GraphState.deptree = depGraph
         GraphState.sentID = instance.comment['id'] if instance.comment else GraphState.sentID + 1
         GraphState.verbose = verbose
-        
+
         if verbose > 1:
             print >> sys.stderr,"Sentence ID:%s, initial sigma:%s" % (GraphState.sentID,sigma)
 
@@ -95,12 +95,12 @@ class GraphState(object):
 
         #GraphState.new_actions = set()
         GraphState.action_table = actionTable
-    
+
     def _init_atomics(self):
         """
         atomics features for the initial state
         """
-        
+
         # first parent of current node
         sp1 = GraphState.sent[self.A.nodes[self.idx].parents[0]] if self.A.nodes[self.idx].parents else NOT_ASSIGNED
         # immediate left sibling, immediate right sibling and second right sibling
@@ -114,7 +114,7 @@ class GraphState(object):
             slsb = EMPTY
             srsb = EMPTY
             sr2sb = EMPTY
-        
+
         '''
         # left first parent of current node
         slp1 = GraphState.sent[self.A.nodes[self.idx].parents[0]] if self.A.nodes[self.idx].parents and self.A.nodes[self.idx].parents[0] < self.idx else NOT_ASSIGNED
@@ -133,16 +133,16 @@ class GraphState(object):
                          'slsb':slsb,
                          'srsb':srsb,
                          'sr2sb':sr2sb
-                        } 
+                        }
                         for tok in GraphState.sent] # atomic features for current state
-        
+
     def pcopy(self):
-        return cPickle.loads(cPickle.dumps(self,-1))
-    
+        return pickle.loads(pickle.dumps(self,-1))
+
     def is_terminal(self):
         """done traverse the graph"""
         return self.idx == -1
-    
+
     def is_permissible(self,action):
         #TODO
         return True
@@ -157,7 +157,7 @@ class GraphState(object):
             tmp_state = tmp_state.apply(next_action)
             next_action,label = oracle.give_ref_action(tmp_state,ref_graph)
         '''
-        #ref_children = [ref_graph.abt_node_table[c] if c in ref_graph.abt_node_table else c for c in ref_graph.nodes[goldIdx].children] 
+        #ref_children = [ref_graph.abt_node_table[c] if c in ref_graph.abt_node_table else c for c in ref_graph.nodes[goldIdx].children]
         #return len(set(self.A.nodes[currentIdx].children) & set(ref_children)) > 1 or self.A.nodes[currentIdx].words[0][0].lower() == goldIdx
         if self.A.nodes[currentIdx].words[0].lower() in prep_list:
             return False
@@ -166,7 +166,7 @@ class GraphState(object):
     def get_current_argset(self):
         if self.idx == START_ID:
             return set([])
-        currentIdx = self.idx 
+        currentIdx = self.idx
         currentNode = self.get_current_node()
         currentGraph = self.A
         # record the core arguments current node(predicate) have
@@ -175,9 +175,10 @@ class GraphState(object):
 
         if self.idx == START_ID:
             return [{'type':NEXT2}]
-        
+
+        print('\n--------------------------------------\n')
         actions = []
-        currentIdx = self.idx 
+        currentIdx = self.idx
         currentChildIdx = self.cidx
         currentNode = self.get_current_node()
         currentChild = self.get_current_child()
@@ -186,15 +187,23 @@ class GraphState(object):
         token_to_concept_table = GraphState.model.token_to_concept_table
         tag_codebook = GraphState.model.tag_codebook
 
-        if isinstance(currentIdx,int): 
+        print('currentIdx = ' + str(currentIdx))
+        print('currentChildIdx = ' + str(currentChildIdx))
+        print('currentNode = ' + str(currentNode))
+        print('currentChild = ' + str(currentChild))
+
+        if isinstance(currentIdx,int):
             current_tok_lemma = ','.join(tok['lemma'] for tok in GraphState.sent if tok['id'] in range(currentNode.start,currentNode.end))
             current_tok_form = ','.join(tok['form'] for tok in GraphState.sent if tok['id'] in range(currentNode.start,currentNode.end))
-            current_tok_ne = GraphState.sent[currentIdx]['ne'] 
+            current_tok_ne = GraphState.sent[currentIdx]['ne']
         else:
             current_tok_form = ABT_TOKEN['form']
             current_tok_lemma = ABT_TOKEN['lemma'] #if currentIdx != START_ID else START_TOKEN['lemma']
             current_tok_ne = ABT_TOKEN['ne'] #if currentIdx != START_ID else START_TOKEN['ne']
-            
+
+        print('current_tok_lemma = ' + str(current_tok_lemma))
+        print('current_tok_form = ' + str(current_tok_form))
+        print('current_tok_ne = ' + str(current_tok_ne))
         #if self.action_history and self.action_history[-1]['type'] in [REPLACEHEAD,NEXT2,DELETENODE] and currentNode.num_parent_infer_in_chain < 3 and currentNode.num_parent_infer == 0:
             #actions.extend([{'type':INFER,'tag':z} for z in tag_codebook['ABTTag'].labels()])
 
@@ -203,9 +212,9 @@ class GraphState(object):
 
             #if current_tok_lemma in token_label_set:
             #    all_candidate_edge_labels.extend(list(token_label_set[current_tok_lemma]))
-            #elif current_tok_ne not in ['O','NUMBER']:                
+            #elif current_tok_ne not in ['O','NUMBER']:
             #    all_candidate_edge_labels.extend(list(token_label_set[current_tok_ne]))
-                #all_candidate_tags.extend(GraphState.model.tag_codebook['ETag'].labels()) 
+                #all_candidate_tags.extend(GraphState.model.tag_codebook['ETag'].labels())
             #else:
             #    all_candidate_tags.append(current_tok_lemma)  # for decoding
 
@@ -218,7 +227,7 @@ class GraphState(object):
 
             if currentIdx != 0: # not root
                 if not currentChild.SWAPPED:
-                    #actions.extend([{'type':MERGE},{'type':REPLACEHEAD}])  
+                    #actions.extend([{'type':MERGE},{'type':REPLACEHEAD}])
                     ##actions.extend([{'type':NEXT1,'edge_label':y} for y in all_candidate_edge_labels])
                     #actions.append({'type':NEXT1})
                 #else:
@@ -228,12 +237,12 @@ class GraphState(object):
                     ##actions.append({'type':REATTACH,'parent_to_attach':None}) # this equals delete edge
                     actions.append({'type':SWAP})
                     actions.extend([{'type':REATTACH,'parent_to_attach':p} for p in currentGraph.get_possible_parent_constrained(currentIdx,currentChildIdx)])
-                    
+
                     #actions.extend([{'type':NEXT1,'edge_label':y} for y in all_candidate_edge_labels])
-                
+
                 if isinstance(currentIdx,int) and isinstance(currentChildIdx,int):
                     actions.append({'type':MERGE})
-                actions.extend([{'type':NEXT1},{'type':REPLACEHEAD}])  
+                actions.extend([{'type':NEXT1},{'type':REPLACEHEAD}])
                 actions.extend({'type':REENTRANCE,'parent_to_add':x} for x in currentGraph.get_possible_reentrance_constrained(currentIdx,currentChildIdx))
             else:
                 actions.extend([{'type':NEXT1}])
@@ -242,12 +251,14 @@ class GraphState(object):
                 actions.extend([{'type':REATTACH,'parent_to_attach':p} for p in currentGraph.get_possible_parent_constrained(currentIdx,currentChildIdx)])
                 #actions.extend({'type':ADDCHILD,'child_type':x} for x in currentGraph.get_possible_children_unconstrained(currentIdx))
         else:
+
+            print('Matt is Here')
             all_candidate_tags = []
             # MOD
             if current_tok_lemma in token_to_concept_table:
                 all_candidate_tags.extend(list(token_to_concept_table[current_tok_lemma]))
                 #all_candidate_tags.append(current_tok_lemma.lower())
-            elif isinstance(currentIdx,int) and (current_tok_ne not in ['O','NUMBER'] or currentNode.end - currentNode.start > 1):                
+            elif isinstance(currentIdx,int) and (current_tok_ne not in ['O','NUMBER'] or currentNode.end - currentNode.start > 1):
                 all_candidate_tags.extend(list(token_to_concept_table[current_tok_ne]))
                 #all_candidate_tags.append(current_tok_lemma.lower())
                 #all_candidate_tags.extend(GraphState.model.tag_codebook['ETag'].labels())
@@ -268,6 +279,7 @@ class GraphState(object):
             actions.append({'type':NEXT2})
             actions.extend({'type':NEXT2,'tag':z} for z in all_candidate_tags)
 
+            print('last self.A.nodes = ' + str(self.A.nodes))
         return actions
 
     def get_node_context(self,idx):
@@ -287,19 +299,20 @@ class GraphState(object):
         else:
             prs1 = ABT_TOKEN
             prs2 = ABT_TOKEN
-        
+
 
         # immediate left sibling, immediate right sibling and second right sibling
         if p1 != NOT_ASSIGNED and len(self.A.nodes[self.A.nodes[idx].parents[0]].children) > 1:
             children = self.A.nodes[self.A.nodes[idx].parents[0]].children
-            idx_order = sorted(children).index(idx)
+            idx_order = python2_sort(children).index(idx)
+            # idx_order = sorted(children).index(idx)
             if idx_order > 0:
                 lsb = GraphState.sent[children[idx_order-1]] if isinstance(children[idx_order-1],int) else ABT_TOKEN
             else:
                 lsb = NOT_ASSIGNED
             if idx_order < len(children)-1:
                 rsb = GraphState.sent[children[idx_order+1]] if isinstance(children[idx_order+1],int) else ABT_TOKEN
-            else: 
+            else:
                 rsb = NOT_ASSIGNED
             if idx_order < len(children)-2:
                 r2sb = GraphState.sent[children[idx_order+2]] if isinstance(children[idx_order+2],int) else ABT_TOKEN
@@ -311,7 +324,7 @@ class GraphState(object):
             r2sb = EMPTY
 
         return prs2,prs1,p1,lsb,rsb,r2sb
-        
+
     def get_feature_context_window(self,action):
         """context window for current node and its child"""
         def isprep(token):
@@ -336,7 +349,7 @@ class GraphState(object):
                     return tag_lemma[i:]
                 else:
                     assert False
-            
+
         s0_atomics = GraphState.sent[self.idx].copy() if isinstance(self.idx,int) else ABT_TOKEN #GraphState.abt_tokens[self.idx]
         s0_brown_repr = BROWN_CLUSTER[s0_atomics['form']]
         s0_atomics['brown4'] = s0_brown_repr[:4] if len(s0_brown_repr) > 3 else s0_brown_repr
@@ -345,9 +358,9 @@ class GraphState(object):
         s0_atomics['brown10'] = s0_brown_repr[:10] if len(s0_brown_repr) > 9 else s0_brown_repr
         s0_atomics['brown20'] = s0_brown_repr[:20] if len(s0_brown_repr) > 19 else s0_brown_repr
 
-        
+
         #s0_atomics['pfx'] = s0_atomics['form'][:4] if len(s0_atomics['form']) > 3 else s0_atomics['form']
-        sprs2,sprs1,sp1,slsb,srsb,sr2sb=self.get_node_context(self.idx)        
+        sprs2,sprs1,sp1,slsb,srsb,sr2sb=self.get_node_context(self.idx)
         s0_atomics['prs1']=sprs1
         s0_atomics['prs2']=sprs2
         s0_atomics['p1']=sp1
@@ -391,14 +404,14 @@ class GraphState(object):
             s0_atomics['txdelta'] = NOT_APPLY
             s0_atomics['eqfrmset'] = NOT_APPLY
             s0_atomics['isleaf'] = NOT_APPLY
-        
+
         s0_args = None
         s0_prds = None
         if isinstance(self.idx,int) and GraphState.sent[self.idx].get('args',{}):
             s0_args = GraphState.sent[self.idx]['args']
         if isinstance(self.idx,int) and GraphState.sent[self.idx].get('pred',{}):
             s0_prds = GraphState.sent[self.idx]['pred']
-        
+
         if self.cidx and self.cidx != START_ID:
             b0_atomics = GraphState.sent[self.cidx].copy() if isinstance(self.cidx,int) else ABT_TOKEN #GraphState.abt_tokens[self.cidx]
             b0_brown_repr = BROWN_CLUSTER[b0_atomics['form']]
@@ -429,7 +442,7 @@ class GraphState(object):
 
             b0_atomics['isprd']=self.cidx in s0_prds if s0_prds else NOT_ASSIGNED
             b0_atomics['prdlabel']=s0_prds[self.cidx] if b0_atomics['isprd'] else NOT_ASSIGNED
-            
+
             if isinstance(self.cidx,int) and isinstance(self.idx,int):
                 path,direction = GraphState.deptree.get_path(self.cidx,self.idx)
                 if self.A.nodes[self.idx].end - self.A.nodes[self.idx].start > 1:
@@ -453,7 +466,7 @@ class GraphState(object):
                 b0_atomics['pathprep'] = EMPTY
                 b0_atomics['pathpwd'] = EMPTY
                 b0_atomics['pathprepwd'] = EMPTY
-                
+
             b0_atomics['apathx'] = EMPTY
             b0_atomics['apathp'] = EMPTY
             b0_atomics['apathprep'] = EMPTY
@@ -462,8 +475,8 @@ class GraphState(object):
             b0_atomics['apathprepwd'] = EMPTY
         else:
             b0_atomics = EMPTY
-        
-            
+
+
         if action['type'] in [REATTACH,REENTRANCE]:
             #child_to_add = action['child_to_add']
             if action['type'] == REATTACH:
@@ -480,7 +493,7 @@ class GraphState(object):
                 a0_atomics['brown20'] = a0_brown_repr[:20] if len(a0_brown_repr) > 19 else a0_brown_repr
                 a0_atomics['concept'] = self.A.nodes[parent_to_attach].tag
                 aprs2,aprs1,ap1,alsb,arsb,ar2sb = self.get_node_context(parent_to_attach)
-                
+
                 a0_atomics['p1']=ap1
                 a0_atomics['lsb']=alsb
                 a0_atomics['rsb']=arsb
@@ -509,11 +522,11 @@ class GraphState(object):
 
                 a0_atomics['isarg']=parent_to_attach in b0_args if b0_args else NOT_ASSIGNED
                 a0_atomics['arglabel']=b0_args[parent_to_attach] if a0_atomics['isarg'] else NOT_ASSIGNED
-                
+
                 if isinstance(self.cidx,int) and isinstance(parent_to_attach,int):
                     path,direction = GraphState.deptree.get_path(self.cidx,parent_to_attach)
                 #path_x_str=[(GraphState.sent[i]['pos'],GraphState.sent[i]['rel']) for i in path[1:-1]]
-                    if self.A.nodes[parent_to_attach].end - self.A.nodes[parent_to_attach].start > 1:                
+                    if self.A.nodes[parent_to_attach].end - self.A.nodes[parent_to_attach].start > 1:
                         apath_x_str = [('X','X') for i in path[1:-1] if i not in range(self.A.nodes[parent_to_attach].start,self.A.nodes[parent_to_attach].end)]
                         apath_pos_str = [(GraphState.sent[i]['pos'],GraphState.sent[i]['rel']) for i in path[1:-1] if i not in range(self.A.nodes[parent_to_attach].start,self.A.nodes[parent_to_attach].end)]
                         apath_pos_str_pp = [(GraphState.sent[i]['pos'],GraphState.sent[i]['rel']) if not isprep(GraphState.sent[i]) else GraphState.sent[i]['form'] for i in path[1:-1] if i not in range(self.A.nodes[parent_to_attach].start,self.A.nodes[parent_to_attach].end)]
@@ -522,13 +535,13 @@ class GraphState(object):
                         apath_pos_str = [(GraphState.sent[i]['pos'],GraphState.sent[i]['rel']) for i in path[1:-1]]
                         apath_pos_str_pp = [(GraphState.sent[i]['pos'],GraphState.sent[i]['rel']) if not isprep(GraphState.sent[i]) else GraphState.sent[i]['form'] for i in path[1:-1]]
                     apath_x_str.insert(0,GraphState.sent[path[0]]['rel'])
-                    apath_x_str.append(GraphState.sent[path[-1]]['rel'])            
+                    apath_x_str.append(GraphState.sent[path[-1]]['rel'])
 
                     apath_pos_str.insert(0,GraphState.sent[path[0]]['rel'])
                     apath_pos_str.append(GraphState.sent[path[-1]]['rel'])
 
                     apath_pos_str_pp.insert(0,GraphState.sent[path[0]]['rel'])
-                    apath_pos_str_pp.append(GraphState.sent[path[-1]]['rel'])            
+                    apath_pos_str_pp.append(GraphState.sent[path[-1]]['rel'])
 
             #path_label_str = [GraphState.sent[i]['rel'] for i in path] # dependency label
             #path_lemma_str.insert(0,GraphState.sent[path[0]]['rel'])
@@ -568,12 +581,12 @@ class GraphState(object):
         else:
             a0_atomics = EMPTY
         '''
-            
+
         if self.cidx == START_ID:
-            s0_atomics['nech'] = len(set(GraphState.sent[j]['ne'] if isinstance(j,int) else ABT_NE for j in self.A.nodes[self.idx].children) & INFER_NETAG) > 0 
-            s0_atomics['isnom'] = s0_atomics['lemma'].lower() in NOMLIST            
+            s0_atomics['nech'] = len(set(GraphState.sent[j]['ne'] if isinstance(j,int) else ABT_NE for j in self.A.nodes[self.idx].children) & INFER_NETAG) > 0
+            s0_atomics['isnom'] = s0_atomics['lemma'].lower() in NOMLIST
             s0_atomics['concept']=self.A.nodes[self.idx].tag
-            if self.A.nodes[self.idx].children: 
+            if self.A.nodes[self.idx].children:
                 c1 = self.A.nodes[self.idx].children[0]
                 s0_atomics['c1lemma'] = GraphState.sent[c1]['lemma'].lower() if isinstance(c1,int) else ABT_LEMMA
                 s0_atomics['c1dl'] = GraphState.sent[c1]['rel'] if isinstance(c1,int) else ABT_LEMMA
@@ -602,7 +615,7 @@ class GraphState(object):
             #path,direction = self.A.get_path(self.cidx,parent_to_attach)
             path,direction = GraphState.deptree.get_path(self.cidx,parent_to_attach)
             #path_x_str=[(GraphState.sent[i]['pos'],GraphState.sent[i]['rel']) for i in path[1:-1]]
-            if self.A.nodes[parent_to_attach].end - self.A.nodes[parent_to_attach].start > 1:                
+            if self.A.nodes[parent_to_attach].end - self.A.nodes[parent_to_attach].start > 1:
                 apath_x_str = [('X','X') for i in path[1:-1] if i not in range(self.A.nodes[parent_to_attach].start,self.A.nodes[parent_to_attach].end)]
                 apath_pos_str = [(GraphState.sent[i]['pos'],GraphState.sent[i]['rel']) for i in path[1:-1] if i not in range(self.A.nodes[parent_to_attach].start,self.A.nodes[parent_to_attach].end)]
                 apath_pos_str_pp = [(GraphState.sent[i]['pos'],GraphState.sent[i]['rel']) if not isprep(GraphState.sent[i]) else GraphState.sent[i]['form'] for i in path[1:-1] if i not in range(self.A.nodes[parent_to_attach].start,self.A.nodes[parent_to_attach].end)]
@@ -611,13 +624,13 @@ class GraphState(object):
                 apath_pos_str = [(GraphState.sent[i]['pos'],GraphState.sent[i]['rel']) for i in path[1:-1]]
                 apath_pos_str_pp = [(GraphState.sent[i]['pos'],GraphState.sent[i]['rel']) if not isprep(GraphState.sent[i]) else GraphState.sent[i]['form'] for i in path[1:-1]]
             apath_x_str.insert(0,GraphState.sent[path[0]]['rel'])
-            apath_x_str.append(GraphState.sent[path[-1]]['rel'])            
+            apath_x_str.append(GraphState.sent[path[-1]]['rel'])
 
             apath_pos_str.insert(0,GraphState.sent[path[0]]['rel'])
             apath_pos_str.append(GraphState.sent[path[-1]]['rel'])
 
             apath_pos_str_pp.insert(0,GraphState.sent[path[0]]['rel'])
-            apath_pos_str_pp.append(GraphState.sent[path[-1]]['rel'])            
+            apath_pos_str_pp.append(GraphState.sent[path[-1]]['rel'])
 
             #path_label_str = [GraphState.sent[i]['rel'] for i in path] # dependency label
             #path_lemma_str.insert(0,GraphState.sent[path[0]]['rel'])
@@ -632,16 +645,16 @@ class GraphState(object):
         else:
             a0_atomics = EMPTY
         '''
-        
+
         return (s0_atomics,b0_atomics,a0_atomics)
-        
+
     def get_gold_edge_graph(self):
         gold_edge_graph = copy.deepcopy(self.A)
         parsed_tuples = gold_edge_graph.tuples()
         gold_tuples = self.gold_graph.tuples()
-        
-        for t_tuple in parsed_tuples:            
-            if t_tuple in gold_tuples:            
+
+        for t_tuple in parsed_tuples:
+            if t_tuple in gold_tuples:
                 gold_arc_label = self.gold_graph.get_edge_label(t_tuple[0],t_tuple[1])
                 gold_edge_graph.set_edge_label(t_tuple[0],t_tuple[1],gold_arc_label)
 
@@ -675,7 +688,7 @@ class GraphState(object):
 
         parsed_tuples = self.A.tuples()
         if self.verbose > 1:
-            print >> sys.stderr, 'Parsed tuples:'+str(parsed_tuples) 
+            print >> sys.stderr, 'Parsed tuples:'+str(parsed_tuples)
         num_parsed_arcs = len(parsed_tuples)
         gold_tuples = self.gold_graph.tuples()
         num_gold_arcs = len(gold_tuples)
@@ -716,7 +729,7 @@ class GraphState(object):
                 #else:
                 #    if c_tag == NULL_TAG:
                 #        num_correct_tags += 1.0
-                    
+
             if (p,c) in gold_tuples:
                 num_correct_arcs += 1.0
                 parsed_arc_label = self.A.get_edge_label(p_p,c_p)
@@ -727,7 +740,7 @@ class GraphState(object):
                     self.A.edges_error_table[(p_p,c_p)]=EDGE_TYPE_ERROR
             else:
                 self.A.edges_error_table[(p_p,c_p)]=EDGE_MATCH_ERROR
-                    
+
         #num_parsed_tags = len([i for i in visited_nodes if re.match('\w+-\d+',self.A.get_node_tag(i))])
         #num_gold_tags = len([j for j in self.gold_graph.nodes if re.match('\w+-\d+',self.gold_graph.get_node_tag(j))])
         #num_parsed_tags = len([i for i in visited_nodes if isinstance(self.A.get_node_tag(i),(ETag,ConstTag))])
@@ -759,23 +772,44 @@ class GraphState(object):
 
         return confusion_matrix
     '''
-        
-    def get_score(self,act_type,feature,train=True): 
-        act_idx = GraphState.model.class_codebook.get_index(act_type)       
+
+    def get_score(self,act_type,feature,train=True):
+        act_idx = GraphState.model.class_codebook.get_index(act_type)
+        print('act_type = ' + str(act_type))
+        print('act_idx = ' + str(act_idx))
         #if GraphState.model.weight[act_idx].shape[0] <= GraphState.model.feature_codebook[act_idx].size():
-        #    GraphState.model.reshape_weight(act_idx)        
+        #    GraphState.model.reshape_weight(act_idx)
         weight = GraphState.model.weight[act_idx] if train else GraphState.model.avg_weight[act_idx]
+
+        list_feature = list(feature)
+        # print('feature = ' + str(list_feature))
+        feature = map(lambda x: x, list_feature)
+
+        print('weight = ' + str(weight))
         feat_idx = map(GraphState.model.feature_codebook[act_idx].get_index,feature)
+
+        # print('get_label(6296)' + str(GraphState.model.feature_codebook[act_idx].get_label(6296)))
+        # print('get_label(6299)' + str(GraphState.model.feature_codebook[act_idx].get_label(6299)))
+
+        list_feat_idx = list(feat_idx)
+        print('feat_idx = ' + str(list_feat_idx))
+        feat_idx = map(lambda x: x, list_feat_idx)
+
+        # if (act_type == 6) and (act_idx == 6):
+            # raise Exception('Matt WTF')
+
         return np.sum(weight[ [i for i in feat_idx if i is not None] ],axis = 0)
-        
+
     def make_feat(self,action):
         feat = GraphState.model.feats_generator(self,action)
         return feat
-            
+
     def get_current_node(self):
         return self.A.nodes[self.idx]
 
     def get_current_child(self):
+        print('self.cidx = ' + str(self.cidx))
+        print('self.A.nodes = ' + str(self.A.nodes))
         if self.cidx and self.cidx in self.A.nodes:
             return self.A.nodes[self.cidx]
         else:
@@ -786,15 +820,15 @@ class GraphState(object):
         other_params = dict([(k,v) for k,v in action.items() if k!='type' and v is not None])
         self.action_history.append(action)
         return getattr(self,GraphState.action_table[action_type])(**other_params)
-        
+
 
     def next1(self, edge_label=None):
         newstate = self.pcopy()
         if edge_label and edge_label is not START_EDGE:newstate.A.set_edge_label(newstate.idx,newstate.cidx,edge_label)
-        newstate.beta.pop()            
+        newstate.beta.pop()
         newstate.cidx = newstate.beta.top() if newstate.beta else None
         #newstate.action_history.append(NEXT1)
-            
+
         return newstate
 
     def next2(self, tag=None):
@@ -806,19 +840,19 @@ class GraphState(object):
         if newstate.beta is not None: newstate.beta.push(START_ID)
         newstate.cidx = newstate.beta.top() if newstate.beta else None
         #newstate.action_history.append(NEXT2)
-        
+
         return newstate
 
     def delete_node(self):
         newstate = self.pcopy()
         newstate.A.remove_node(newstate.idx,RECORD=True)
         newstate.sigma.pop()
-        newstate.idx = newstate.sigma.top()        
+        newstate.idx = newstate.sigma.top()
         newstate.beta = Buffer(newstate.A.nodes[newstate.idx].children) if newstate.idx != -1 else None
         if newstate.beta is not None: newstate.beta.push(START_ID)
         newstate.cidx = newstate.beta.top() if newstate.beta else None
         #newstate.action_history.append(DELETENODE)
-            
+
         return newstate
 
     def infer(self, tag):
@@ -827,7 +861,7 @@ class GraphState(object):
         '''
         newstate = self.pcopy()
         abt_node_index = newstate.A.new_abt_node(newstate.idx,tag)
-        
+
         # add the atomic info from its core noun
         #abt_atomics = {}
         #abt_atomics['id'] = abt_node_index
@@ -837,13 +871,13 @@ class GraphState(object):
         #abt_atomics['ne'] = GraphState.sent[newstate.idx]['ne'] if isinstance(newstate.idx,int) else GraphState.abt_tokens[newstate.idx]['ne']
         #abt_atomics['rel'] = GraphState.sent[newstate.idx]['rel'] if isinstance(newstate.idx,int) else GraphState.abt_tokens[newstate.idx]['rel']
         #GraphState.abt_tokens[abt_node_index] = abt_atomics
-        
+
         tmp = newstate.sigma.pop()
         newstate.sigma.push(abt_node_index)
         newstate.sigma.push(tmp)
         return newstate
     '''
-    infer abstract node on edge pair: may cause feature inconsistency 
+    infer abstract node on edge pair: may cause feature inconsistency
     def infer1(self):
         newstate = self.pcopy()
         abt_node_index = newstate.A.new_abt_node(newstate.idx)
@@ -856,7 +890,7 @@ class GraphState(object):
         newstate.cidx = newstate.beta.top() if newstate.beta else None
         return newstate
     '''
-    
+
     '''
     def delete_edge(self):
         newstate = self.pcopy()
@@ -870,16 +904,16 @@ class GraphState(object):
 
         return newstate
     '''
-    
+
     def reattach(self,parent_to_attach=None,edge_label=None):
         newstate = self.pcopy()
         newstate.A.reattach_node(newstate.idx,newstate.cidx,parent_to_attach,edge_label)
         newstate.beta.pop()
         newstate.cidx = newstate.beta.top() if newstate.beta else None
         return newstate
-        
+
     def swap(self,edge_label):
-        newstate = self.pcopy()        
+        newstate = self.pcopy()
         newstate.A.swap_head2(newstate.idx,newstate.cidx,newstate.sigma,edge_label)
         newstate._fix_prop_feature(newstate.idx,newstate.cidx)
         #newstate.idx = newstate.cidx
@@ -917,11 +951,11 @@ class GraphState(object):
                 import pdb
                 pdb.set_trace()
         else:
-            newstate.A.add_edge(parent_to_add,newstate.cidx)        
+            newstate.A.add_edge(parent_to_add,newstate.cidx)
         return newstate
-    
+
     def add_child(self,child_to_add,edge_label=None):
-        newstate = self.pcopy()            
+        newstate = self.pcopy()
         if edge_label:
             newstate.A.add_edge(newstate.idx,child_to_add,edge_label)
         else:
@@ -950,10 +984,10 @@ class GraphState(object):
                         GraphState.sent[idx]['pred'].pop(prd)
                     except KeyError:
                         import pdb
-                        pdb.set_trace()                        
+                        pdb.set_trace()
                     GraphState.sent[prd]['args'][cidx] = tmp
-                    
-                        
+
+
             ctok['args'] = ctok.get('args',{})
             ctok['args'].update(dict((k,v) for k,v in tok.get('args',{}).items() if k!=cidx))
             for arg in tok.get('args',{}).copy():
@@ -965,7 +999,7 @@ class GraphState(object):
                         import pdb
                         pdb.set_trace()
                     GraphState.sent[arg]['pred'][cidx] = atmp
-                    
+
     def replace_head(self):
         """
         Use current child to replace current node
@@ -978,7 +1012,7 @@ class GraphState(object):
         if newstate.idx in newstate.sigma: newstate.sigma.remove(newstate.idx)
         if newstate.cidx in newstate.sigma: newstate.sigma.remove(newstate.cidx) # pushing cidx to top
         newstate.sigma.push(newstate.cidx)
-        newstate.A.record_rep_head(newstate.cidx,newstate.idx)    
+        newstate.A.record_rep_head(newstate.cidx,newstate.idx)
         newstate.idx = newstate.cidx
         newstate.cidx = newstate.beta.top() if newstate.beta else None
         #newstate.action_history.append(REPLACEHEAD)
@@ -987,7 +1021,7 @@ class GraphState(object):
 
     def merge(self):
         """
-        merge nodes to form entity 
+        merge nodes to form entity
         """
         newstate = self.pcopy()
         tmp1 = newstate.idx
@@ -1036,7 +1070,7 @@ class GraphState(object):
                 pre_abs_id = None
                 rel = None
                 for i,abs_tag in enumerate(node_tag.split('+')):
-                    
+
                     if i == 0: # node already initialized
                         if '@' in abs_tag:
                             #abs_tag,rel = abs_tag.split('@')
@@ -1054,7 +1088,7 @@ class GraphState(object):
                         if '@' in abs_tag:
                             #abs_tag,rel = abs_tag.split('@')
                             rel, sub_abs_tag = abs_tag.split('@')
-                            
+
                             abs_id = sub_abs_tag[0].lower()
                             j = 0
                             while abs_id in amr:
@@ -1071,13 +1105,13 @@ class GraphState(object):
                             #rel = abs_tag
 
 
-                
+
 
                 last_abs_id = pre_abs_id
                 last_abs_tag = abs_tag if abs_tag else node_tag.split('+')[i-1]
                 if last_abs_tag == '-' or '@' in abs_tag:
                     return variable,core_var
-                
+
                 rel_in_span = 'op' if rel is None else rel
                 for i,tok in enumerate(tokens_in_span):
                     ###########
@@ -1087,9 +1121,9 @@ class GraphState(object):
                             tok['form'] = COUNTRY_LIST[tok['form']]
 
                     ###########
-                    
+
                     foo = amr[tok['form']]
-                    
+
                     if last_abs_tag == 'name':
                         amr._add_triple(last_abs_id,'op'+str(i+1),StrLiteral(tok['form']))
                     elif last_abs_tag == 'date-entity':
@@ -1102,7 +1136,7 @@ class GraphState(object):
                         if m:
                             year,month,day = None,None,None
                             date_type = m.lastgroup
-                            
+
                             if date_type == 'd1':
                                 year = m.group(2)
                                 if m.group(3) is not None: month = str(int(m.group(3)[1:]))
@@ -1129,7 +1163,7 @@ class GraphState(object):
                         while new_id in amr:
                             j+=1
                             new_id = new_id[0]+str(j)
-                    
+
                         foo = amr[new_id]
                         amr.node_to_concepts[new_id] = tok['form']
                         amr._add_triple(last_abs_id,'unit',new_id)
@@ -1171,18 +1205,20 @@ class GraphState(object):
                     foo = amr[variable]
                     node_tag = node_tag.replace(':','-')
                     amr.node_to_concepts[variable] = node_tag # concept tag
-                
+
             return variable,core_var
-        
+
         amr = AMR()
         span_graph.flipConst()
         node_prefix = 'x'
         cpvar_cache = {}
-        
-        for parent,child in span_graph.tuples(): 
+
+        for parent,child in span_graph.tuples():
             pvar = node_prefix+str(parent)
             cvar = node_prefix+str(child)
 
+            print('pvar = ' + str(pvar))
+            print('cvar = ' + str(cvar))
 
             try:
                 if parent == 0:
@@ -1202,15 +1238,21 @@ class GraphState(object):
                         amr._add_triple(cpvar_cache[pvar],rel_label,cvar)
                     else:
                         amr._add_triple(pvar,rel_label,cvar)
+                        print('pvar = ' + str(pvar))
+                        print('rel_label = ' + str(rel_label))
+                        print('cvar = ' + str(cvar))
             except ValueError as e:
-                print e
+                print (e)
                 #print span_graph.graphID
-                
+
         if len(amr.roots) > 1:
             foo =  amr[FAKE_ROOT_VAR]
             amr.node_to_concepts[FAKE_ROOT_VAR] = FAKE_ROOT_CONCEPT
             for multi_root in amr.roots:
                 amr._add_triple(FAKE_ROOT_VAR,FAKE_ROOT_EDGE,multi_root)
+                print('\tFAKE_ROOT_VAR = ' + str(FAKE_ROOT_VAR))
+                print('\tFAKE_ROOT_EDGE = ' + str(FAKE_ROOT_EDGE))
+                print('\tmulti_root = ' + str(multi_root))
             amr.roots = [FAKE_ROOT_VAR]
         elif len(amr.roots) == 0 and len(amr.keys()) != 0:
             foo =  amr[FAKE_ROOT_VAR]
@@ -1233,15 +1275,18 @@ class GraphState(object):
                 foo = amr[mrvar]
                 amr.node_to_concepts[mrvar] = span_graph.nodes[mlt_root].tag
                 amr._add_triple(FAKE_ROOT_VAR,FAKE_ROOT_EDGE,mrvar)
+                print('FAKE_ROOT_VAR = ' + str(FAKE_ROOT_VAR))
+                print('FAKE_ROOT_EDGE = ' + str(FAKE_ROOT_EDGE))
+                print('mrvar = ' + str(mrvar))
             amr.roots=[FAKE_ROOT_VAR]
-                    
+
         else:
             pass
-            
-            
+
+
         return amr
-                
-        
+
+
     def print_config(self, column_len = 80):
         output = ''
         if self.cidx:
@@ -1264,12 +1309,12 @@ class GraphState(object):
                                                            ','.join(tok['form'] for tok in GraphState.sent[self.idx:self.A.nodes[self.idx].end]), self.idx, \
                                                     ','.join(tok['form'] for tok in GraphState.sent[added_child_idx:self.A.nodes[added_child_idx].end]), added_child_idx)
             else:
-            '''  
+            '''
             if self.idx == START_ID:
                 span_g = START_FORM
                 output += 'ID:%s %s\nParent:(%s-%s) Children:%s'%(str(GraphState.sentID),self.text,\
                                                                       span_g, self.idx, 'None')
-            else:  
+            else:
                 span_g = ','.join(tok['form'] for tok in GraphState.sent[self.idx:self.A.nodes[self.idx].end]) if isinstance(self.idx,int) else ','.join(self.A.nodes[self.idx].words)
                 output += 'ID:%s %s\nParent:(%s-%s) Children:%s'%(str(GraphState.sentID),self.text,\
                                                                       span_g, self.idx, \
@@ -1286,7 +1331,7 @@ class GraphState(object):
             if i < num_p and i < num_r:
                 g,d = parsed_tuples[i]
                 gg,gd = ref_tuples[i]
-                parsed_edge_label = self.A.get_edge_label(g,d) 
+                parsed_edge_label = self.A.get_edge_label(g,d)
                 gold_edge_label = self.gold_graph.get_edge_label(gg,gd)
                 gold_span_gg = ','.join(tok['form'] for tok in GraphState.sent[gg:self.gold_graph.nodes[gg].end]) if isinstance(gg,int) else ','.join(self.gold_graph.nodes[gg].words)
                 gold_span_gd = ','.join(tok['form'] for tok in GraphState.sent[gd:self.gold_graph.nodes[gd].end]) if isinstance(gd,int) else ','.join(self.gold_graph.nodes[gd].words)
@@ -1329,7 +1374,7 @@ class GraphState(object):
     def write_basic_amr(self,out,CONST_REL='ARG0'):
         '''
         this method takes the unlabeled edges produced by the parser and
-        adds them with fake amr relation which is mapped from dependency tag set        
+        adds them with fake amr relation which is mapped from dependency tag set
         '''
         CoNLLSent = GraphState.sent
         parsed_tuples = self.A.tuples()

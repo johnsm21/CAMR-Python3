@@ -1,0 +1,15 @@
+bllipparser==2016.9.11
+certifi==2019.3.9
+chardet==3.0.4
+idna==2.8
+nltk==3.4.1
+numpy==1.16.3
+pexpect==4.7.0
+protobuf==3.7.1
+psutil==5.6.2
+ptyprocess==0.6.0
+requests==2.22.0
+six==1.12.0
+torch==1.1.0
+tqdm==4.32.1
+urllib3==1.25.3

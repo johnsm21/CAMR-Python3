@@ -67,3 +67,7 @@ scripts/*~
 *.gz
 *.zip
 log/
+.DS_Store
+python3_model*
+lib/stanford-corenlp-full-2015-*
+

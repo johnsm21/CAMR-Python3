@@ -7,7 +7,7 @@
 from common.util import *
 from collections import deque
 import copy
-import cPickle
+import pickle
 
 class ActionError(Exception):
     pass
@@ -47,12 +47,12 @@ class Newstate(object):
                     Action.RIGHTSHIFT:'rightshift',
                     Action.RIGHTPASS:'rightpass',
                     Action.NOREDUCE:'noreduce',
-                    Action.DELETEARC:'deletearc',                
+                    Action.DELETEARC:'deletearc',
                     #Action.DELETEPASS:'deletepass',
                     Action.NOPASS:'nopass'
                 }
     sent = None
-    
+
     def __init__(self,sigma,delta,beta,A):
         self.sigma = sigma
         self.delta = delta
@@ -66,21 +66,21 @@ class Newstate(object):
         beta = Buffer(depGraph.nodes_list()[1:])
         A = depGraph
         State.sent = "ROOT "+sent
-        return Newstate(sigma,delta,beta,A)        
-    
+        return Newstate(sigma,delta,beta,A)
+
     def pcopy(self):
-        return cPickle.loads(cPickle.dumps(self,-1))
+        return pickle.loads(pickle.dumps(self,-1))
 
     def is_terminal(self):
         return self.beta.isEmpty()
-    
+
     def is_permissible(self,action):
         #TODO
         return True
-    
+
     def _getBufferStackPair(self):
         return tuple((self.sigma.top(),self.beta.top()))
-    
+
     def cur_arc(self):
         """return current dependency arc corresponding to the buffer stack pair"""
         i,j = self._getBufferStackPair()
@@ -105,7 +105,7 @@ class Newstate(object):
         newstate.delta.clear()
         newstate.sigma.append(newstate.beta.pop())
         return newstate
-    
+
     def del_child(self):
         newstate = self.pcopy()
         i,j = newstate._getBufferStackPair()
@@ -139,8 +139,8 @@ class Newstate(object):
     '''
     def no_arc(self):
         """
-        put current stack top in delta list so that it can be 
-        compared to nodes in beta later; 
+        put current stack top in delta list so that it can be
+        compared to nodes in beta later;
         """
         newstate = self.pcopy()
         newstate.delta.appendleft(newstate.sigma.pop())
@@ -171,14 +171,14 @@ class Newstate(object):
         newstate.sigma.append(newstate.beta.pop())
         newstate.A.addEdge(i,j)
         return newstate
-        
+
     def rightpass(self):
         newstate = self.pcopy()
         i,j = newstate._getBufferStackPair()
         newstate.delta.appendleft(newstate.sigma.pop())
         newstate.A.addEdge(i,j)
         return newstate
-    
+
     def noreduce(self):
         """
         reduce completed node
@@ -186,7 +186,7 @@ class Newstate(object):
         newstate = self.pcopy()
         newstate.sigma.pop()
         return newstate
-        
+
     def merge(self):
         """merge span"""
         newstate = self.pcopy()

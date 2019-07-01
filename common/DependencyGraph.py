@@ -5,14 +5,14 @@
 @author Chuan Wang
 """
 import codecs
-from util import ListMap,Stack
+from common.util import ListMap,Stack
 
 class DNode(object):
     def __init__(self,idx,str):
         self.index = idx
         self.str = str
         self.children = []
-        self.parents = [] 
+        self.parents = []
     def addChildren(self,c):
         if isinstance(c,list):
             self.children.extend(c)
@@ -24,7 +24,7 @@ class DNode(object):
 
     def removeChild(self,child):
         self.children.remove(child)
-        
+
     def removeParent(self,parent):
         self.parents.remove(parent)
     def __str__(self):
@@ -40,7 +40,7 @@ class DepGraph(object):
         self.root = 0
         self.nodes = {}
 
-        
+
 
     @staticmethod
     def init_graph(stp_deps):
@@ -65,10 +65,10 @@ class DepGraph(object):
                 dpg.addNode(dep_node)
             dpg.addEdge(gov_idx,dep_idx)
         return dpg
-                
+
     def is_empty(self):
         return len(self.nodes.keys()) == 0
-    
+
     def numNodes(self):
         return len(self.nodes.keys())
 
@@ -81,7 +81,7 @@ class DepGraph(object):
     def addEdge(self,gov_index,dep_index):
         self.nodes[gov_index].addChildren(dep_index)
         self.nodes[dep_index].addParent(gov_index)
-        
+
     def get_direction(self,i,j):
         if j in self.nodes[i].children:
             return 0
@@ -89,7 +89,7 @@ class DepGraph(object):
             return 1
         else:
             return -1
-        
+
     # ignore the multiedge between same nodes, which does not exist in unlabled mode
     def remove_edge(self,gov_index,dep_index):
         self.nodes[gov_index].removeChild(dep_index)
@@ -115,12 +115,12 @@ class DepGraph(object):
             self.nodes[p].children.remove(gov_index)
             self.nodes[p].children.append(dep_index)
 
-    
+
     def bfs(self):
         from collections import deque
         visited_nodes = set()
         dep_tuples = []
-        
+
         queue = deque([self.root])
         while queue:
             next = queue.popleft()
@@ -142,11 +142,8 @@ class DepGraph(object):
                 self.postorder(child,seq)
             seq.append(root)
         return seq
-            
-        
+
+
     def print_tuples(self):
         """print the dependency graph as tuples"""
         return '\n'.join("(%s,%s)"%(self.nodes[g].str,self.nodes[d].str) for g,d in self.bfs())
-    
-            
-            

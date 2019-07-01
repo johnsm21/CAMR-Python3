@@ -1,18 +1,41 @@
 #!/usr/bin/python
 
 
-# Implementation for graph of which nodes are spans of sentence 
+# Implementation for graph of which nodes are spans of sentence
 # author Chuan Wang
 
 import copy
 import sys,re
-from util import StrLiteral,Polarity,Quantity,ConstTag
-from util import ispunctuation
+from common.util import StrLiteral,Polarity,Quantity,ConstTag
+from common.util import ispunctuation
 import constants
 from common.AMRGraph import *
 from collections import defaultdict
 log=sys.stderr
 debuglevel=1
+
+def python2_sort_working(ilist):
+    int_list = []
+    str_list = []
+    for i in ilist:
+        if type(i) is str:
+            str_list.append(i)
+        else:
+            int_list.append(i)
+    return sorted(int_list) + sorted(str_list)
+
+def python2_sort(ilist):
+    # return sorted(ilist)
+    int_list = []
+    str_list = []
+    for i in ilist:
+        if type(i) is str:
+            str_list.append(i)
+        else:
+            int_list.append(i)
+
+    return sorted(int_list) + sorted(str_list)
+
 
 class SpanNode(object):
 
@@ -22,7 +45,7 @@ class SpanNode(object):
         self.tag = tag
         self.words = words
         self.children = []
-        self.parents = [] 
+        self.parents = []
         self.SWAPPED = False
         self.num_swap = 0
         self.num_parent_infer = 0
@@ -57,7 +80,7 @@ class SpanNode(object):
 
     def removeChild(self,child):
         self.children.remove(child)
-        
+
     def removeParent(self,parent):
         self.parents.remove(parent)
 
@@ -78,7 +101,7 @@ class SpanGraph(object):
         self.multi_roots = []
         self.nodes = {} # refer to spans by start index
         self.edges = {} # refer to edges by tuple (parent,child)
-        self.sent = None        
+        self.sent = None
         self.static_tuples = set([]) # cache the tuples so that we don't have to traverse the graph everytime
         self.abt_node_num = 0
         self.abt_node_table = {}
@@ -100,7 +123,7 @@ class SpanGraph(object):
         for h in varables:
             hconcept = amr.node_to_concepts[h] if h in amr.node_to_concepts else h
             if not h in span_alignment: # ignore unaligned concept
-                unaligned_vars.add(h) 
+                unaligned_vars.add(h)
                 continue
             hspans = span_alignment[h]
             if len(hspans) < 2:
@@ -128,13 +151,13 @@ class SpanGraph(object):
                     d_node = SpanNode.from_span(dspan)
                     spgraph.add_node(d_node)
                     if dconcept == 'and': and_nodes.add(d_node.start)
-                spgraph.add_edge(hspan.start,dspan.start,edge)                            
+                spgraph.add_edge(hspan.start,dspan.start,edge)
 
 
         #if SpanGraph.graphID == 2069:
         #    import pdb
         #    pdb.set_trace()
-            
+
         root = SpanNode(0,1,['root'],'O')
         spgraph.add_node(root)
         #hchild_id = 0
@@ -144,7 +167,7 @@ class SpanGraph(object):
         else:
             if debuglevel > 1:
                 print >> log, "GraphID:%s WARNING:root %s not aligned!"%(SpanGraph.graphID,amr.node_to_concepts[amr.roots[0]])
-            
+
             '''
             # make up a fake root that connect all the multi-roots
             root_str = amr.node_to_concepts[amr.roots[0]]
@@ -171,20 +194,22 @@ class SpanGraph(object):
                 if self.nodes[node_id].children:
                     self.add_edge(0,node_id,constants.FAKE_ROOT_EDGE)
                 self.multi_roots.append(node_id)
-                
+
     def fix_multi_align(self,and_nodes):
         # fix some of the 'and' alignment problem
         and_nodes = list(and_nodes)
         for i in range(len(and_nodes)):
             first_and = and_nodes[i]
-            children = sorted(self.nodes[first_and].children)
+            children = python2_sort(self.nodes[first_and].children)
+            # children = sorted(self.nodes[first_and].children)
             if children:
                 min = children[0]
                 max = children[-1]
                 if first_and < min or first_and > max: # need fix
                     for j in range(i+1,len(and_nodes)):
                         second_and = and_nodes[j]
-                        schildren = sorted(self.nodes[second_and].children)
+                        schildren = python2_sort(self.nodes[second_and].children)
+                        # schildren = sorted(self.nodes[second_and].children)
                         if schildren:
                             smin = schildren[0]
                             smax = schildren[-1]
@@ -202,7 +227,7 @@ class SpanGraph(object):
                                     else:
                                         self.remove_edge(p,first_and)
                                         self.add_edge(first_and,p,edge_label)
-                                        
+
                                 for c in tmp1_children:
                                     edge_label = self.get_edge_label(first_and,c)
                                     if c != second_and:
@@ -223,7 +248,7 @@ class SpanGraph(object):
                                         edge_label = self.get_edge_label(second_and,sc)
                                         self.remove_edge(second_and,sc)
                                         self.add_edge(first_and,sc,edge_label)
-                                
+
 
 
     @staticmethod
@@ -237,7 +262,7 @@ class SpanGraph(object):
         varables = [node.node_label for node in amr.dfs()[0]]
         unaligned_vars = set([])
         and_nodes = set([])
-        
+
         for h in varables:
             if h not in amr.node_to_concepts and h not in span_alignment:
                 continue
@@ -248,7 +273,7 @@ class SpanGraph(object):
                 h_node = SpanNode(h,h,[hconcept],hconcept)
                 if h not in spgraph.nodes:
                     spgraph.add_node(h_node)
-                unaligned_vars.add(h) 
+                unaligned_vars.add(h)
                 h_index = h
                 #continue
             else:
@@ -262,14 +287,14 @@ class SpanGraph(object):
                     spgraph.add_node(h_node)
                     if hconcept == 'and': and_nodes.add(h_node.start) # aligned 'and' nodes
                 h_index = hspan.start
-                
+
             for edge,ds in amr[h].items():
                 d = ds[0]
                 if d not in amr.node_to_concepts and d not in span_alignment:
                     continue
                 if edge == 'wiki':
                     continue
-                    
+
                 dconcept = amr.node_to_concepts[d] if d in amr.node_to_concepts else d
                 if not d in span_alignment: # unaligned concept
                     d_node = SpanNode(d,d,[dconcept],dconcept)
@@ -297,13 +322,13 @@ class SpanGraph(object):
                         if dconcept == 'and': and_nodes.add(d_node.start)
                     d_index = dspan.start
 
-                spgraph.add_edge(h_index,d_index,edge)                            
+                spgraph.add_edge(h_index,d_index,edge)
 
 
         #if SpanGraph.graphID == 2069:
         #    import pdb
         #    pdb.set_trace()
-            
+
         root = SpanNode(0,1,[constants.ROOT_FORM],constants.NULL_TAG)
         spgraph.add_node(root)
         #hchild_id = 0
@@ -313,7 +338,7 @@ class SpanGraph(object):
         else:
             if debuglevel > 1:
                 print >> log, "GraphID:%s WARNING:root %s not aligned!"%(SpanGraph.graphID,amr.node_to_concepts[amr.roots[0]])
-            
+
             '''
             # make up a fake root that connect all the multi-roots
             root_str = amr.node_to_concepts[amr.roots[0]]
@@ -332,7 +357,7 @@ class SpanGraph(object):
 
         spgraph.fix_root()
         spgraph.fix_multi_align(and_nodes)
-                        
+
         return spgraph
 
     @staticmethod
@@ -353,7 +378,7 @@ class SpanGraph(object):
                     dpg.add_node(SpanNode(gov_id,gov_id+1,[gov_form]))
                 if 'head' not in instance.tokens[gov_id] and gov_id not in dpg.multi_roots:
                     dpg.multi_roots.append(gov_id)
-                    
+
                 dep_id = tok['id']
                 dep_form = tok['form']
                 dep_netag = tok['ne']
@@ -361,14 +386,14 @@ class SpanGraph(object):
                 if dep_id not in dpg.nodes:
                     dpg.add_node(SpanNode(dep_id,dep_id+1,[dep_form]))
                 dpg.add_edge(gov_id,dep_id)
-                    
+
             else:  # punctuation
                 punc_id = tok['id']
                 punc_form = tok['form']
                 if punc_id not in dpg.multi_roots: dpg.multi_roots.append(punc_id)
                 if punc_id not in dpg.nodes:
                     dpg.add_node(SpanNode(punc_id,punc_id+1,[punc_form]))
-            
+
         if not dpg.nodes: # dependency tree is empty
             root = SpanNode(0,1,['root'],'O')
             dpg.multi_roots.append(0)
@@ -377,7 +402,7 @@ class SpanGraph(object):
         if constants.FLAG_COREF:
             dpg.add_trace_info(instance)
             dpg.add_coref_info(instance)
-        
+
         return dpg
 
     def add_trace_info(self,instance):
@@ -418,7 +443,7 @@ class SpanGraph(object):
             for mr in self.multi_roots:
                 if mr in self.nodes and len(self.nodes[mr].children) > 0:
                     self.add_edge(0,mr)
-            
+
     def pre_merge_netag(self,instance):
         ne_spans = instance.get_ne_span(PRE_MERGE_NETAG)
         for ne_id,span in ne_spans.items():
@@ -441,9 +466,9 @@ class SpanGraph(object):
                     pctok_set = set(self.sent[j]['form'] for j in range(pcnode.start,pcnode.end))
                     if self.sent[c]['ne'] == self.sent[cidx]['ne'] and self.sent[c]['ne'] and len(ctok_set & pctok_set) > 0:
                         self.remove_subgraph(c,deleted_nodes)
-                        
+
         return deleted_nodes
-                
+
     def remove_subgraph(self,idx,deleted_nodes):
         '''
         remove the subgraph rooted at idx; no cycle should be in the subgraph
@@ -453,18 +478,19 @@ class SpanGraph(object):
 
         self.remove_node(idx)
         deleted_nodes.add(idx)
-        
+
 
     def make_root(self):
-        first = sorted(self.nodes.keys())[0]
+        first = python2_sort(self.nodes.keys())[0]
+        # first = sorted(self.nodes.keys())[0]
         root = SpanNode(0,1,['root'],'O')
         self.multi_roots.append(0)
         self.add_node(root)
         self.add_edge(0,first)
         #for c in self.nodes[first].children:
         #    self.remove_edge(first,c)
-        #    self.add_edge(0,c)            
-        
+        #    self.add_edge(0,c)
+
     def is_empty(self):
         return len(self.nodes.keys()) == 0
 
@@ -479,7 +505,7 @@ class SpanGraph(object):
 
     def isContained(self,node_id):
         """check whether node is contained by some node in graph"""
-        
+
         for k in self.nodes:
             if node_id in self.nodes:
                 node = self.nodes[node_id]
@@ -517,7 +543,7 @@ class SpanGraph(object):
         self.add_edge(abt_node_index,gov_index)
         return abt_node_index
     '''
-    work with infer1 
+    work with infer1
     def new_abt_node(self,gov_index):
         gov_node = self.nodes[gov_index]
         abt_node_index=constants.ABT_PREFIX+str(self.abt_node_num)
@@ -528,19 +554,19 @@ class SpanGraph(object):
         gov_node.num_child_infer += 1
         return abt_node_index
     '''
-    
+
     def add_abt_mapping(self,key,value):
         #assert key not in self.abt_node_table
         self.abt_node_table[key] = value
 
     def set_node_tag(self,idx,tag):
         self.nodes[idx].tag = tag
-    
+
     def get_node_tag(self,idx):
-        return self.nodes[idx].tag 
-    
+        return self.nodes[idx].tag
+
     def get_edge_label(self,gov_index,dep_index):
-        return self.edges[tuple((gov_index,dep_index))] 
+        return self.edges[tuple((gov_index,dep_index))]
 
     def set_edge_label(self,gov_index,dep_index,edge_label):
         self.edges[tuple((gov_index,dep_index))] = edge_label
@@ -553,7 +579,7 @@ class SpanGraph(object):
             return 1
         else:
             return -1
-    
+
     def record_rep_head(self,cidx,idx):
         self.nodes[cidx].rep_parent.append(idx)
 
@@ -565,8 +591,8 @@ class SpanGraph(object):
             self.remove_edge(idx,c)
         del self.nodes[idx]
         if idx in self.multi_roots: self.multi_roots.remove(idx)
-        
-    # ignore the multiedge between same nodes 
+
+    # ignore the multiedge between same nodes
     def remove_edge(self,gov_index,dep_index):
         self.nodes[gov_index].removeChild(dep_index)
         self.nodes[dep_index].removeParent(gov_index)
@@ -609,7 +635,7 @@ class SpanGraph(object):
             else:
                 self.remove_edge(gov_index,c)
                 self.add_edge(c,gov_index)
-                
+
         for sp in tmp_parents:
             if sp != gov_index:
                 edge_label = self.get_edge_label(sp,dep_index)
@@ -617,20 +643,20 @@ class SpanGraph(object):
                 self.add_edge(sp,gov_index,edge_label)
             #else:
             #    self.remove_edge(sp,dep_index)
-                
+
         for sc in tmp_children:
             if sc != gov_index:
                 edge_label = self.get_edge_label(dep_index,sc)
                 self.remove_edge(dep_index,sc)
                 self.add_edge(gov_index,sc,edge_label)
-        
+
         self.nodes[gov_index].SWAPPED = True
-            
+
     def reattach_node(self,idx,cidx,parent_to_attach,edge_label):
         self.remove_edge(idx,cidx)
         if parent_to_attach is not None:
             self.add_edge(parent_to_attach,cidx,edge_label)
-        
+
 
     def is_cycle(self,root):
         visited = set()
@@ -647,8 +673,8 @@ class SpanGraph(object):
                 return True
 
         return False
-        
-            
+
+
     def find_true_head(self,index):
         true_index = index
         # if current node has done inferred; find the true head of abstract struture
@@ -661,24 +687,24 @@ class SpanGraph(object):
                 true_index = ancestor_index
                 ancestor_index = self.nodes[true_index].parents[0]
         return true_index
-            
+
     def swap_head2(self,gov_index,dep_index,sigma,edge_label=None):
         """
-        keep dep and gov's dependents unchanged, only switch the dependency edge 
+        keep dep and gov's dependents unchanged, only switch the dependency edge
         direction, also all gov's parents become dep's parents
         """
         #
         origin_index = gov_index
         gov_index = self.find_true_head(gov_index)
-                
+
         for p in self.nodes[gov_index].parents[:]:
             if p != dep_index and p in sigma:
                 self.remove_edge(p,gov_index)
                 self.add_edge(p,dep_index)
-                
+
         if dep_index in self.nodes[gov_index].parents:
             self.remove_edge(origin_index,dep_index)
-        else:            
+        else:
             #self.nodes[gov_index].removeChild(dep_index)
             #self.nodes[gov_index].addParent(dep_index)
 
@@ -688,16 +714,16 @@ class SpanGraph(object):
             self.add_edge(dep_index,gov_index,edge_label)
             self.nodes[gov_index].SWAPPED = True
             self.nodes[dep_index].num_swap += 1
-        
+
     def replace_head(self,idx1,idx2):
         for c in self.nodes[idx1].children[:]:
             if c != idx2 and c not in self.nodes[idx2].children:
                 if c not in self.nodes[idx2].parents: # no multi-edge no circle
                     self.add_edge(idx2,c)
-                                        
+
         for p in self.nodes[idx1].parents[:]:
             if p != idx2: self.add_edge(p,idx2)
-            
+
         self.remove_node(idx1,RECORD=True)
 
     def merge_node(self,idx1,idx2):
@@ -736,11 +762,11 @@ class SpanGraph(object):
         self.nodes[idx1].incoming_traces = self.nodes[idx1].incoming_traces | self.nodes[idx2].incoming_traces
         self.remove_node(idx2)
 
-    
+
     def get_multi_roots(self):
         multi_roots = []
         for n in self.nodes.keys():
-            if self.nodes[n].parents == []  and self.nodes[n].children != []:  # root TODO: Detect root with circle    
+            if self.nodes[n].parents == []  and self.nodes[n].children != []:  # root TODO: Detect root with circle
                 multi_roots.append(n)
         return multi_roots
 
@@ -757,7 +783,8 @@ class SpanGraph(object):
             if next in visited_nodes:
                 continue
             visited_nodes.add(next)
-            for child in sorted(self.nodes[next].children):
+            for child in python2_sort(self.nodes[next].children):
+            # for child in sorted(self.nodes[next].children):
                 if not (next,child) in dep_tuples:
                     if not child in visited_nodes:
                         queue.append(child)
@@ -783,13 +810,17 @@ class SpanGraph(object):
                 self.topologicalSortUtil(child, visited, stack)
 
         stack.appendleft(idx)
-    
+
     def tuples(self):
         """traverse the graph in index increasing order"""
         graph_tuples = []
         node_set = set()
-        for n in sorted(self.nodes.keys()):
-            if (self.nodes[n].parents == [] or n not in node_set) and self.nodes[n].children != []:  # root   
+        print('@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@')
+        print('self.nodes.keys() = ' + str(self.nodes.keys()))
+        print('@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@')
+        # for n in sorted(self.nodes.keys()):
+        for n in python2_sort_working(self.nodes.keys()):
+            if (self.nodes[n].parents == [] or n not in node_set) and self.nodes[n].children != []:  # root
                 visited_nodes,sub_tuples = self.bfs(n,True)
                 graph_tuples.extend([st for st in sub_tuples if st not in graph_tuples])
                 node_set.update(visited_nodes)
@@ -808,24 +839,26 @@ class SpanGraph(object):
                     self.postorder(child,seq)
             seq.append(root)
         return seq
-    
+
     def leaves(self):
         """return all the leaves ordered by their indexes in the sentence"""
         leaves = []
         for nidx in self.nodes:
             if self.nodes[nidx].children == []:
                 leaves.append(nidx)
-        return sorted(leaves)
-    
-    def locInTree(self,idx):        
-        depth = 0 
+        # return sorted(leaves)
+        return python2_sort(leaves)
+
+    def locInTree(self,idx):
+        depth = 0
         candidates = self.leaves()
         while idx not in candidates:
-            candidates = sorted(list(set([self.nodes[l].parents[0] for l in candidates if self.nodes[l].parents])))
-            depth +=1 
+            # candidates = sorted(list(set([self.nodes[l].parents[0] for l in candidates if self.nodes[l].parents])))
+            candidates = python2_sort(list(set([self.nodes[l].parents[0] for l in candidates if self.nodes[l].parents])))
+            depth +=1
         assert idx in candidates
         return (candidates.index(idx),depth)
-        
+
     def path(self,idx):
         """path from root, only for tree structure"""
         path = []
@@ -837,9 +870,9 @@ class SpanGraph(object):
                 import pdb
                 pdb.set_trace()
             path.insert(0,cur.start)
-            
+
         return path
-        
+
     def get_path(self,idx1,idx2):
         """path between two nodes, only for tree structure"""
         path1 = self.path(idx1)
@@ -849,10 +882,10 @@ class SpanGraph(object):
         for i in range(lenth):
             if path1[i] != path2[i]:
                 break
-        if path1[i] == path2[i]:            
+        if path1[i] == path2[i]:
             if len(path1) > len(path2):
                 path = list(reversed(path1[i:]))
-                direction = '0' 
+                direction = '0'
             else:
                 path = path2[i:]
                 direction = '1'
@@ -860,12 +893,12 @@ class SpanGraph(object):
             path = list(reversed(path1[i-1:]))+path2[i:]
 
         return path,direction
-        
+
     def relativePos(self,currentIdx,otherIdx):
         cindex,cdepth = self.locInTree(currentIdx)
         oindex,odepth = self.locInTree(otherIdx)
-        return (cindex-oindex,cdepth-odepth)  
-    
+        return (cindex-oindex,cdepth-odepth)
+
     def relativePos2(self,currentIdx,otherIdx):
         cpath = self.path(currentIdx)
         opath = self.path(otherIdx)
@@ -913,7 +946,7 @@ class SpanGraph(object):
                         raise Exception("Not mutual exclusive child type")
 
         return type if type else 'O'
-        
+
     def get_possible_children_unconstrained(self,currentIdx):
         """return all the other nodes in the tree not violated the rules"""
         candidate_children = []
@@ -921,7 +954,7 @@ class SpanGraph(object):
             if otherIdx != 0 and otherIdx != currentIdx and \
                 otherIdx not in self.nodes[currentIdx].children:
                 candidate_children.append(otherIdx)
-    
+
         return candidate_children
 
     def get_possible_parent_unconstrained(self,currentIdx,currentChildIdx):
@@ -956,24 +989,26 @@ class SpanGraph(object):
         if isinstance(currentChildIdx,int) and 'pred' in self.sent[currentChildIdx]:
             result_set = result_set.union(set(prd for prd in self.sent[currentChildIdx]['pred'] if prd != currentChildIdx and prd in self.nodes and prd not in cur.parents and prd not in cur.children))
         return result_set
-        
+
     def get_possible_parent_constrained(self,currentIdx,currentChildIdx,i=2):
         '''promotion: only add ancestors 2 levels up the current node'''
         cur_p = self.nodes[currentIdx]
         cur = self.nodes[currentChildIdx]
-        children = sorted(self.nodes[currentIdx].children)
+        children = python2_sort(self.nodes[currentIdx].children)
+        # children = sorted(self.nodes[currentIdx].children)
         c = children.index(currentChildIdx)
         candidate_parents= set([])
         visited = set([])
-        
+
         #candidate_parents.update([sb for sb in cur_p.children if sb != currentChildIdx and sb not in self.nodes[currentChildIdx].parents and sb not in self.nodes[currentChildIdx].children])
-        
+
         if c > 0:
             left_sp = self.nodes[children[c-1]]
             candidate_parents.add(children[c-1])
             visited.add(children[c-1])
             while left_sp.children:
-                ls_r_child = sorted(left_sp.children)[-1]                
+                ls_r_child = python2_sort(left_sp.children)[-1]
+                # ls_r_child = sorted(left_sp.children)[-1]
                 if ls_r_child in visited: break
                 visited.add(ls_r_child)
                 if ls_r_child != currentChildIdx and ls_r_child not in self.nodes[currentChildIdx].children and ls_r_child not in self.nodes[currentChildIdx].parents:
@@ -985,13 +1020,14 @@ class SpanGraph(object):
             candidate_parents.add(children[c+1])
             visited.add(children[c+1])
             while right_sp.children:
-                rs_l_child = sorted(right_sp.children)[0]
+                rs_l_child = python2_sort(right_sp.children)[0]
+                # rs_l_child = sorted(right_sp.children)[0]
                 if rs_l_child in visited: break
                 visited.add(rs_l_child)
                 if rs_l_child != currentChildIdx and rs_l_child not in self.nodes[currentChildIdx].children and rs_l_child not in self.nodes[currentChildIdx].parents:
                     candidate_parents.add(rs_l_child)
                 right_sp = self.nodes[rs_l_child]
-        
+
         cur_p = self.nodes[currentIdx]
         j=0
         while cur_p.parents and j < i:
@@ -1007,8 +1043,8 @@ class SpanGraph(object):
         if isinstance(currentChildIdx,int) and 'pred' in self.sent[currentChildIdx]:
             candidate_parents = candidate_parents.union(set(prd for prd in self.sent[currentChildIdx]['pred'] if prd != currentChildIdx and prd in self.nodes and prd not in cur.parents and prd not in cur.children))
         return candidate_parents
-        
-                
+
+
     def get_possible_children(self,currentIdx):
         """only for tree structure, get all the candidate children for current node idx"""
         cpath = self.path(currentIdx)
@@ -1028,17 +1064,17 @@ class SpanGraph(object):
                otherIdx not in self.nodes[currentIdx].children:
                 num_total += 1
                 opath = self.path(otherIdx)
-                if len(cpath) > 1 and len(opath) > 1 and cpath[-2] == opath[-2]:                    
+                if len(cpath) > 1 and len(opath) > 1 and cpath[-2] == opath[-2]:
                     possible_children.append('SP'+str(num_SP))
-                    num_SP +=1 
+                    num_SP +=1
 
-                if len(cpath) > 2 and len(opath) > 2 and cpath[-3] == opath[-3] and cpath[-2] != opath[-2]:                
+                if len(cpath) > 2 and len(opath) > 2 and cpath[-3] == opath[-3] and cpath[-2] != opath[-2]:
                     possible_children.append('SGP'+str(num_SGP))
-                    num_SGP +=1 
+                    num_SGP +=1
 
                 if len(cpath) > 2 and len(opath) > 2 and cpath[-3] == opath[-2] and opath[-1] != cpath[-2]:
                     possible_children.append('PB'+str(num_PB))
-                    num_PB +=1 
+                    num_PB +=1
 
                 if len(cpath) > 2 and len(opath) > 2 and cpath[-2] == opath[-3] and cpath[-1] != opath[-2]:
                     possible_children.append('rPB'+str(num_rPB))
@@ -1052,12 +1088,12 @@ class SpanGraph(object):
                     possible_children.append('rP'+str(num_rP))
                     num_rP += 1
 
-                    
+
                 assert num_total == len(possible_children)
 
         return possible_children
-        
-                        
+
+
     def is_produce_circle(self,currentIdx,node_to_add):
         currentNode = self.nodes[currentIdx]
         stack = [currentIdx]
@@ -1091,13 +1127,13 @@ class SpanGraph(object):
                     if p != child:
                         self.remove_edge(p,parent)
                         self.add_edge(p,child)
-                
+
                 if child in self.nodes[parent].parents:
                     self.remove_edge(parent,child)
-                else:            
+                else:
                     #self.nodes[gov_index].removeChild(dep_index)
                     #self.nodes[gov_index].addParent(dep_index)
-                    
+
                     #self.nodes[dep_index].removeParent(gov_index)
                     #self.nodes[dep_index].addChild(gov_index)
                     self.remove_edge(parent,child)
@@ -1105,7 +1141,7 @@ class SpanGraph(object):
 
             elif isinstance(self.nodes[parent].tag,ConstTag) and isinstance(self.nodes[child].tag,ConstTag):
                 for p in self.nodes[parent].parents[:]:
-                    if p != child:                
+                    if p != child:
                         self.add_edge(p,child)
 
                 self.remove_edge(parent,child)
@@ -1125,7 +1161,7 @@ class SpanGraph(object):
                 seq = self.bfs()
             else:
                 seq = self.tuples()
-                
+
             for g,d in seq:
                 g_span = ','.join(tok['form'] for tok in self.sent[g:self.nodes[g].end]) if isinstance(g,int) else ','.join(self.nodes[g].words)
                 d_span = ','.join(tok['form'] for tok in self.sent[d:self.nodes[d].end]) if isinstance(d,int) else ','.join(self.nodes[d].words)
@@ -1134,7 +1170,7 @@ class SpanGraph(object):
             return output
 
     def min_index(self,root):
-        '''give smallest index in the subgraph rooted at root'''            
+        '''give smallest index in the subgraph rooted at root'''
         visited = set()
         return self.min_index_util(root,visited)
 
@@ -1149,9 +1185,10 @@ class SpanGraph(object):
                     tmp = mc
 
         return tmp
-        
+
     def reIndex(self):
-        index_list = sorted(self.nodes.keys())
+        index_list = python2_sort(self.nodes.keys())
+        # index_list = sorted(self.nodes.keys())
         new_index_list = index_list[:]
         i = len(index_list) - 1
 
@@ -1167,8 +1204,8 @@ class SpanGraph(object):
                 break
 
             i -= 1
-        return new_index_list 
-                
+        return new_index_list
+
     def print_dep_style_graph(self):
         '''
         output the dependency style collapsed span graph, which can be displayed with DependenSee tool;
@@ -1183,11 +1220,11 @@ class SpanGraph(object):
             tag_d = '%s%s' % (self.get_node_tag(d),self.nodes_error_table[d])
             edge_label = '%s%s' % (self.get_edge_label(g,d),self.edges_error_table[(g,d)])
             tuple_str += "%s(%s-%s:%s, %s-%s:%s)\n" % (edge_label, span_g, index_list.index(g), tag_g, span_d, index_list.index(d), tag_d)
-        
+
         return tuple_str
 
     def getPGStyleGraph(self,focus=None):
-        
+
         result = ''
         if focus:
             for g,d in self.tuples():
@@ -1201,14 +1238,12 @@ class SpanGraph(object):
                     dwords = '"%s-%d"'%(','.join(w for w in self.nodes[d].words),d)
                 if (g,d) == focus:
                     result += '%s ->[red] %s;\n'%(gwords,dwords)
-                else:                    
+                else:
                     result += '%s -> %s;\n'%(gwords,dwords)
             return result
         else:
             for g,d in self.tuples():
                 gwords = ','.join(w for w in self.nodes[g].words)
                 dwords = ','.join(w for w in self.nodes[d].words)
-                result += '"%s-%d" -> "%s-%d";\n'%(gwords,g,dwords,d) 
+                result += '"%s-%d" -> "%s-%d";\n'%(gwords,g,dwords,d)
             return result
-            
-

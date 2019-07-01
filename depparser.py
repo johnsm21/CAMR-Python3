@@ -2,11 +2,11 @@
 import os,subprocess
 import sys
 
-VERBOSE = True 
+VERBOSE = True
 logs = sys.stdout
 
 class DepParser(object):
-    
+
     def __init__(self):
         pass
 
@@ -16,7 +16,7 @@ class DepParser(object):
 
 
 class CharniakParser(DepParser):
-    
+
     def parse(self,sent_filename):
         """
         use Charniak parser to parse sentences then convert results to Stanford Dependency
@@ -27,32 +27,33 @@ class CharniakParser(DepParser):
         #if not.path.exists(path_to_model):
         model_type = 'WSJ+Gigaword'
         path_to_model = download_and_install_model(model_type,'./bllip-parser/models')
-        print "Loading Charniak parser model: %s ..." % (model_type)
+        print ("Loading Charniak parser model: %s ..." % (model_type))
         rrp = RerankingParser.from_unified_model_dir(path_to_model)
-        print "Begin Charniak parsing ..."
+        print ("Begin Charniak parsing ...")
         parsed_filename = sent_filename+'.charniak.parse'
         parsed_trees = ''
         lineno = 0
         with open(sent_filename,'r') as f, open(parsed_filename,'w') as of:
             for l in f:
                 lineno += 1
-                print >> logs, 'lineno %s, %s'% (lineno, l)
+                # print >> logs, 'lineno %s, %s'% (lineno, l)
+                print('lineno %s, %s'% (lineno, l), file=logs)
                 try:
                     parsed_trees = rrp.simple_parse(l.strip().split())
                 except IndexError:
                     parsed_trees = rrp.simple_parse(l.strip().split()[:64])
-                    
+
                 parsed_trees += '\n'
                 of.write(parsed_trees)
 
-        
+
         # convert parse tree to dependency tree
-        print "Convert Charniak parse tree to Stanford Dependency tree ..."
+        print ("Convert Charniak parse tree to Stanford Dependency tree ...")
         subprocess.call('./scripts/stdconvert.sh '+parsed_filename,shell=True)
-        
+
 
 class StanfordDepParser(DepParser):
-    
+
     def parse(self,sent_filename):
         """
         separate dependency parser
@@ -60,11 +61,11 @@ class StanfordDepParser(DepParser):
 
         jars = ["stanford-parser-3.3.1-models.jar",
                 "stanford-parser.jar"]
-       
+
         # if CoreNLP libraries are in a different directory,
         # change the corenlp_path variable to point to them
         stanford_path = "/home/j/llc/cwang24/R_D/AMRParsing/stanfordnlp/stanford-parser/"
-        
+
         java_path = "java"
         classname = "edu.stanford.nlp.parser.lexparser.LexicalizedParser"
         # include the properties file, so you can change defaults
@@ -76,18 +77,18 @@ class StanfordDepParser(DepParser):
         jars = [stanford_path + jar for jar in jars]
         for jar in jars:
             if not os.path.exists(jar):
-                print "Error! Cannot locate %s" % jar
+                print ("Error! Cannot locate %s" % jar)
                 sys.exit(1)
 
         #Change from ':' to ';'
         # spawn the server
         start_depparser = "%s -Xmx2500m -cp %s %s %s %s %s" % (java_path, ':'.join(jars), classname, flags, model, sent_filename)
-        if VERBOSE: print start_depparser
-        #incoming = pexpect.run(start_depparser)    
+        if VERBOSE: print (start_depparser)
+        #incoming = pexpect.run(start_depparser)
         process = subprocess.Popen(start_depparser.split(),shell=False,stdout=subprocess.PIPE)
         incoming = process.communicate()[0]
-        print 'Incoming',incoming
-        
+        print ('Incoming',incoming)
+
         return incoming
 
 
@@ -100,35 +101,35 @@ class ClearDepParser(DepParser):
 
         clear_path="/home/j/llc/cwang24/Tools/clearnlp"
         extension = "clear.dep"
-        
+
         start_depparser = "%s/clearnlp-parse %s %s" % (clear_path,sent_filename,extension)
-        print start_depparser
+        print (start_depparser)
         extcode = subprocess.call(start_depparser,shell=True)
         dep_result = open(sent_filename+'.'+extension,'r').read()
         subprocess.call(["mv",sent_filename+'.tmp',sent_filename])
         return dep_result
 
 class TurboDepParser(DepParser):
-    
+
     def parse(self,sent_filename):
         turbo_path="/home/j/llc/cwang24/Tools/TurboParser"
         extension = "turbo.dep"
 
         start_depparser = "%s/scripts/parse-tok.sh %s %s" % (turbo_path,sent_filename,sent_filename+'.'+extension)
-        print start_depparser
+        print (start_depparser)
         subprocess.call(start_depparser,shell=True)
         dep_result = open(sent_filename+'.'+extension,'r').read()
         return dep_result
 
 
 class MateDepParser(DepParser):
-    
+
     def parse(self,sent_filename):
         mate_path="/home/j/llc/cwang24/Tools/MateParser"
         extension = "mate.dep"
 
         start_depparser = "%s/parse-eng %s %s" % (mate_path,sent_filename,sent_filename+'.'+extension)
-        print start_depparser
+        print (start_depparser)
         subprocess.call(start_depparser,shell=True)
         dep_result = open(sent_filename+'.'+extension,'r').read()
         return dep_result
