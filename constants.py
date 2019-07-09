@@ -1,9 +1,14 @@
-# all the constants 
+# all the constants
 import numpy as np
 import re
 from os import listdir
+import os
 from collections import defaultdict
 
+pathDirs = os.path.relpath(__file__).split('/')
+camrPath = ""
+for i in range(0, len(pathDirs)-1):
+    camrPath = camrPath + pathDirs[i] + "/"
 
 # flags
 # TODO using gflag
@@ -162,7 +167,8 @@ FEATS_ABBR['txv'] = 'txv'
 FEATS_ABBR['txn'] = 'txn'
 FEATS_ABBR['txdelta'] = 'txdelta'
 
-DEFAULT_RULE_FILE = './rules/dep2amrLabelRules'
+# DEFAULT_RULE_FILE = './rules/dep2amrLabelRules'
+DEFAULT_RULE_FILE = camrPath + 'rules/dep2amrLabelRules'
 
 def _load_rules(rule_file):
     rf = open(rule_file,'r')
@@ -179,7 +185,8 @@ __DEP_AMR_REL_TABLE = _load_rules(DEFAULT_RULE_FILE)
 def get_fake_amr_relation_mapping(dep_rel):
     return __DEP_AMR_REL_TABLE[dep_rel]
 
-DEFAULT_NOM_FILE = './resources/nombank-dict.1.0'
+# DEFAULT_NOM_FILE = './resources/nombank-dict.1.0'
+DEFAULT_NOM_FILE = camrPath + 'resources/nombank-dict.1.0'
 
 def _read_nom_list(nombank_dict_file):
     nomdict = open(nombank_dict_file,'r')
@@ -193,8 +200,9 @@ def _read_nom_list(nombank_dict_file):
 
 NOMLIST = _read_nom_list(DEFAULT_NOM_FILE)
 
-DEFAULT_BROWN_CLUSTER = './resources/wclusters-engiga'
-    
+# DEFAULT_BROWN_CLUSTER = './resources/wclusters-engiga'
+DEFAULT_BROWN_CLUSTER = camrPath + 'resources/wclusters-engiga'
+
 def _load_brown_cluster(dir_path,cluster_num=1000):
     cluster_dict = defaultdict(str)
     for fn in listdir(dir_path):
@@ -208,7 +216,8 @@ def _load_brown_cluster(dir_path,cluster_num=1000):
 
 BROWN_CLUSTER=_load_brown_cluster(DEFAULT_BROWN_CLUSTER)
 
-PATH_TO_VERB_LIST = './resources/verbalization-list-v1.01.txt'
+# PATH_TO_VERB_LIST = './resources/verbalization-list-v1.01.txt'
+PATH_TO_VERB_LIST = camrPath + 'resources/verbalization-list-v1.01.txt'
 
 def _load_verb_list(path_to_file):
     verbdict = {}
@@ -218,8 +227,8 @@ def _load_verb_list(path_to_file):
                 if not line.startswith('DO-NOT-VERBALIZE'):
                     verb_type, lemma, _, subgraph_str = re.split('\s+',line,3)
                     subgraph = {}
-                
-                    #if len(l) == 1: 
+
+                    #if len(l) == 1:
                     #else: # have sub-structure
                     root = re.split('\s+', subgraph_str, 1)[0]
                     subgraph[root] = {}
@@ -227,7 +236,7 @@ def _load_verb_list(path_to_file):
                         relation = match.group(1)
                         concept = match.group(2)
                         subgraph[root][relation] = concept
-                        
+
                     verbdict[lemma] = verbdict.get(lemma,[])
                     verbdict[lemma].append(subgraph)
 
@@ -235,7 +244,8 @@ def _load_verb_list(path_to_file):
 
 VERB_LIST = _load_verb_list(PATH_TO_VERB_LIST)
 
-PATH_TO_COUNTRY_LIST='./resources/country-list.csv'
+# PATH_TO_COUNTRY_LIST='./resources/country-list.csv'
+PATH_TO_COUNTRY_LIST= camrPath + 'resources/country-list.csv'
 
 def _load_country_list(path_to_file):
     countrydict = {}
@@ -246,9 +256,9 @@ def _load_country_list(path_to_file):
             countrydict[country_adj] = country_name
 
     return countrydict
-    
+
 COUNTRY_LIST=_load_country_list(PATH_TO_COUNTRY_LIST)
-                
+
 
 # given different domain, return range of split corpus #TODO: move this part to config file
 def get_corpus_range(corpus_section,corpus_type):

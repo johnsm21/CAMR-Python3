@@ -5,6 +5,11 @@ import sys
 VERBOSE = True
 logs = sys.stdout
 
+pathDirs = os.path.relpath(__file__).split('/')
+camrPath = ""
+for i in range(0, len(pathDirs)-1):
+    camrPath = camrPath + pathDirs[i] + "/"
+
 class DepParser(object):
 
     def __init__(self):
@@ -49,8 +54,8 @@ class CharniakParser(DepParser):
 
         # convert parse tree to dependency tree
         print ("Convert Charniak parse tree to Stanford Dependency tree ...")
-        subprocess.call('./scripts/stdconvert.sh '+parsed_filename,shell=True)
-
+        # subprocess.call('./scripts/stdconvert.sh '+parsed_filename,shell=True)
+        subprocess.call(camrPath+'scripts/stdconvert.sh '+parsed_filename + " "+ camrPath + '/lib',shell=True)
 
 class StanfordDepParser(DepParser):
 

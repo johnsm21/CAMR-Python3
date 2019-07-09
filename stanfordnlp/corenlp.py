@@ -338,16 +338,25 @@ class StanfordCoreNLP(object):
                 "ejml-0.23.jar"]
 
 
-        # if CoreNLP libraries are in a different directory,
-        # change the corenlp_path variable to point to them
-        corenlp_path = os.path.relpath(__file__).split('/')[0]+"/stanford-corenlp-full-2015-04-20/"
-        #corenlp_path = "stanford-corenlp-full-2013-06-20/"
+        # camrPath = 'lib/camr/'
+        pathDirs = os.path.relpath(__file__).split('/')
+        camrPath = ""
+        for i in range(0, len(pathDirs)-1):
+            camrPath = camrPath + pathDirs[i] + "/"
+
+
+         # if CoreNLP libraries are in a different directory,	        # if CoreNLP libraries are in a different directory,
+        # change the corenlp_path variable to point to them	        # change the corenlp_path variable to point to them
+        # corenlp_path = os.path.relpath(__file__).split('/')[0]+"/stanford-corenlp-full-2015-04-20/"	        # corenlp_path = os.path.relpath(__file__).split('/')[0]+"/stanford-corenlp-full-2015-04-20/"
+        corenlp_path = camrPath+"stanford-corenlp-full-2015-04-20/"
+        #corenlp_path = "stanford-corenlp-full-2013-06-20/"	        #corenlp_path = "stanford-corenlp-full-2013-06-20/"
 
         java_path = "java"
         classname = "edu.stanford.nlp.pipeline.StanfordCoreNLP"
         # include the properties file, so you can change defaults
         # but any changes in output format will break parse_parser_results()
-        props = "-props "+ os.path.relpath(__file__).split('/')[0]+"/default.properties"
+        # props = "-props "+ os.path.relpath(__file__).split('/')[0]+"/default.properties"
+        props = "-props "+ camrPath+"default.properties"
 
         # add and check classpaths
         jars = [corenlp_path + jar for jar in jars]

@@ -16,7 +16,7 @@ from common.SpanGraph import *
 from common.AMRGraph import *
 import subprocess
 from Aligner import *
-from parser import *
+from amr_parser import *
 from model import Model
 import argparse
 from preprocessing import *
