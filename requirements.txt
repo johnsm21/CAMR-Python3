@@ -2,7 +2,7 @@ bllipparser==2016.9.11
 certifi==2019.3.9
 chardet==3.0.4
 idna==2.8
-nltk==3.4.1
+nltk==3.4.5
 numpy==1.16.3
 pexpect==4.7.0
 protobuf==3.7.1
